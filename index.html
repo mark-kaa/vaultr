@@ -270,6 +270,7 @@ tbody tr:hover .btn-del{opacity:1}
   <div class="tabs-inner">
     <button class="tab active" id="tab-graded" onclick="switchTab('graded')">🏅 Graderede kort</button>
     <button class="tab" id="tab-sealed" onclick="switchTab('sealed')">📦 Sealed produkter</button>
+    <button class="tab" id="tab-raw" onclick="switchTab('raw')">🃏 Raw kort</button>
   </div>
 </div>
 
@@ -318,6 +319,7 @@ tbody tr:hover .btn-del{opacity:1}
 // ═══════════════════════════════════════════════════════
 let gradedData  = JSON.parse(localStorage.getItem('pf_graded')  || '[]');
 let sealedData  = JSON.parse(localStorage.getItem('pf_sealed')  || '[]');
+let rawData     = JSON.parse(localStorage.getItem('pf_raw')     || '[]');
 // AI analyses: { [itemId]: { recommendation, score, reasoning, dimensions, timestamp } }
 let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
 let expandedRow = null; // currently expanded AI detail row id
@@ -325,6 +327,7 @@ let expandedRow = null; // currently expanded AI detail row id
 function saveAll(){
   localStorage.setItem('pf_graded', JSON.stringify(gradedData));
   localStorage.setItem('pf_sealed', JSON.stringify(sealedData));
+  localStorage.setItem('pf_raw',    JSON.stringify(rawData));
   localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
 }
 
@@ -437,7 +440,7 @@ function csvRowToItem(row){
   };
 }
 function handleCSV(input){
-  const files=Array.from(input.files); let gAdd=0,sAdd=0,pending=files.length;
+  const files=Array.from(input.files); let gAdd=0,sAdd=0,rAdd=0,pending=files.length;
   files.forEach(file=>{
     const r=new FileReader();
     r.onload=e=>{
@@ -446,16 +449,28 @@ function handleCSV(input){
         const item=csvRowToItem(row);
         if(!item.productName) return;
         const pf=(item.portfolioName||'').toLowerCase();
+        const isRaw = pf.includes('raw') || (item.grade==='Ungraded' && !pf.includes('sealed') && !pf.includes('graded'));
         if(pf.includes('graded')||(item.grade&&item.grade!=='Ungraded')){
           const dup=gradedData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.grade===item.grade);
           if(!dup){gradedData.push(item);gAdd++;}
+        } else if(isRaw){
+          const dup=rawData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.set===item.set);
+          if(!dup){rawData.push(item);rAdd++;}
         } else {
           const dup=sealedData.find(d=>d.productName===item.productName&&d.set===item.set);
           if(!dup){sealedData.push(item);sAdd++;}
         }
       });
       pending--;
-      if(pending===0){ saveAll(); showToast(`✅ Importeret: ${gAdd} graderede, ${sAdd} sealed`); render(); }
+      if(pending===0){
+        saveAll();
+        const parts=[];
+        if(gAdd>0) parts.push(`${gAdd} graderede`);
+        if(sAdd>0) parts.push(`${sAdd} sealed`);
+        if(rAdd>0) parts.push(`${rAdd} raw`);
+        showToast('✅ Importeret: '+(parts.join(', ')||'0 nye'));
+        render();
+      }
     };
     r.readAsText(file,'UTF-8');
   });
@@ -579,7 +594,7 @@ async function analyseItem(item){
 
 async function runSingleAnalysis(itemId){
   if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
-  const data  = activeTab==='graded' ? gradedData : sealedData;
+  const data  = activeTab==='graded' ? gradedData : activeTab==='sealed' ? sealedData : rawData;
   const item  = data.find(i=>i.id===itemId);
   if(!item) return;
 
@@ -606,7 +621,7 @@ async function runBatchAnalysis(){
   batchRunning = true;
   document.getElementById('batchBtn').disabled=true;
 
-  const data = activeTab==='graded' ? gradedData : sealedData;
+  const data = activeTab==='graded' ? gradedData : activeTab==='sealed' ? sealedData : rawData;
   // Only items without cached analysis
   const toAnalyse = data.filter(i=>!aiCache[i.id]);
   if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; document.getElementById('batchBtn').disabled=false; return; }
@@ -635,7 +650,7 @@ async function runBatchAnalysis(){
 // RENDER
 // ═══════════════════════════════════════════════════════
 function render(){
-  const data = activeTab==='graded' ? gradedData : sealedData;
+  const data = activeTab==='graded' ? gradedData : activeTab==='sealed' ? sealedData : rawData;
 
   let filtered = data.filter(item=>{
     const q=searchQ;
@@ -654,6 +669,8 @@ function render(){
     else if(sortCol==='date'){av=a.dateAdded;bv=b.dateAdded;}
     else if(sortCol==='qty'){av=a.quantity;bv=b.quantity;}
     else if(sortCol==='score'){av=aiCache[a.id]?.overall_score||0;bv=aiCache[b.id]?.overall_score||0;}
+    else if(sortCol==='rarity'){av=a.rarity||'';bv=b.rarity||'';}
+    else if(sortCol==='cond'){av=a.condition||'';bv=b.condition||'';}
     else {av=a.productName;bv=b.productName;}
     if(typeof av==='string') return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
     return sortAsc?av-bv:bv-av;
@@ -673,6 +690,8 @@ function renderSummary(data, filtered){
   const analysed=data.filter(i=>aiCache[i.id]).length;
   const plClass=tp>=0?'green':'red';
   const pctStr=(pct>=0?'+':'')+pct.toFixed(1)+'%';
+  // For raw: show grading candidates (score >= 7)
+  const gradeCandidates = activeTab==='raw' ? data.filter(i=>aiCache[i.id]&&aiCache[i.id].recommendation==='Send til grading').length : 0;
 
   document.getElementById('summaryBar').innerHTML=
     `<div class="stat"><span class="stat-lbl">Poster:</span><span class="stat-val">${data.length} (${cnt} stk)</span></div>`+
@@ -682,7 +701,8 @@ function renderSummary(data, filtered){
     `<div class="stat"><span class="stat-lbl">Markedsværdi:</span><span class="stat-val gold">${fmtDKK(tv)}</span></div>`+
     `<div class="sdiv"></div>`+
     `<div class="stat"><span class="stat-lbl">P/L:</span><span class="stat-val ${plClass}">${fmtDKK(tp)} (${pctStr})</span></div>`+
-    (analysed>0?`<div class="sdiv"></div><div class="stat"><span class="stat-lbl">AI-analyseret:</span><span class="stat-val blue">${analysed}/${data.length}</span></div>`:'');
+    (analysed>0?`<div class="sdiv"></div><div class="stat"><span class="stat-lbl">AI-analyseret:</span><span class="stat-val blue">${analysed}/${data.length}</span></div>`:'')+
+    (gradeCandidates>0?`<div class="sdiv"></div><div class="stat"><span class="stat-lbl">Send til grading:</span><span class="stat-val" style="color:var(--teal);font-weight:700">${gradeCandidates} kort</span></div>`:'');
 }
 
 function renderToolbar(data){
@@ -690,6 +710,8 @@ function renderToolbar(data){
   const chips=cats.map(c=>`<button class="chip${filterCat===c?' active':''}" onclick="setFilterCat('${esc(c)}')">${esc(c)}</button>`).join('');
   const sortOpts=activeTab==='graded'
     ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
+    :activeTab==='raw'
+    ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="rarity">Raritet</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
     :`<option value="name">Navn</option><option value="set">Sæt</option><option value="qty">Antal</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option>`;
   document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select>`;
   document.getElementById('sortSel').value=sortCol;
@@ -758,7 +780,7 @@ function renderAIDetailRow(item, colSpan){
 function renderTable(filtered){
   const container=document.getElementById('tableContainer');
   if(filtered.length===0){
-    const empty=(activeTab==='graded'?gradedData:sealedData).length===0;
+    const empty=(activeTab==='graded'?gradedData:activeTab==='sealed'?sealedData:rawData).length===0;
     container.innerHTML=`<div class="empty-state">
       <svg width="56" height="56" viewBox="0 0 64 64" fill="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="11" fill="var(--bg)"/><path d="M4 32h56" stroke="var(--bg)" stroke-width="4"/><circle cx="32" cy="32" r="6"/></svg>
       <p class="empty-title">${empty?'Ingen data endnu':'Ingen resultater'}</p>
@@ -801,6 +823,41 @@ function renderTable(filtered){
       <th onclick="setSort('score')" class="${sortCol==='score'?'sorted':''}">🤖 AI-analyse${thA('score')}</th>
       <th></th>
     </tr></thead><tbody>${rows}</tbody></table>`;
+  } else if(activeTab==='raw'){
+    const COLS=11;
+    const rows=filtered.map(item=>{
+      const pl=plAbs(item),pct=plPct(item),plC=pl>=0?'green':'red';
+      const ai=aiCache[item.id];
+      const gradingChip=ai&&ai.recommendation==='Send til grading'
+        ?`<span style="display:inline-block;padding:.1rem .35rem;border-radius:.3rem;font-size:.65rem;font-weight:700;background:#0c7a8520;color:var(--teal);border:1px solid #0c7a8540">🏅</span> `
+        :'';
+      return `<tr>
+        <td><div class="name-cell" title="${esc(item.productName)}">${gradingChip}${esc(item.productName)}</div></td>
+        <td class="hide-mob"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
+        <td class="muted hide-mob" style="font-size:.72rem">${esc(item.cardNumber)}</td>
+        <td class="muted hide-mob" style="font-size:.72rem">${esc(item.rarity)}</td>
+        <td class="hide-mob">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
+        <td class="muted hide-mob" style="font-size:.72rem">${esc(item.condition||'—')}</td>
+        <td class="num">${totC(item)>0?fmtDKK(totC(item)):'—'}</td>
+        <td class="num gold">${totV(item)>0?fmtDKK(totV(item)):'—'}</td>
+        <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
+        ${renderAICell(item)}
+        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+      </tr>`+renderAIDetailRow(item,COLS);
+    }).join('');
+    container.innerHTML=`<table><thead><tr>
+      <th onclick="setSort('name')" class="${sortCol==='name'?'sorted':''}">Navn${thA('name')}</th>
+      <th onclick="setSort('set')" class="${sortCol==='set'?'sorted':''} hide-mob">Sæt${thA('set')}</th>
+      <th class="hide-mob">Nr.</th>
+      <th onclick="setSort('rarity')" class="${sortCol==='rarity'?'sorted':''} hide-mob">Raritet${thA('rarity')}</th>
+      <th class="hide-mob">Kategori</th>
+      <th onclick="setSort('cond')" class="${sortCol==='cond'?'sorted':''} hide-mob">Stand${thA('cond')}</th>
+      <th onclick="setSort('cost')" class="${sortCol==='cost'?'sorted':''}">Kostpris${thA('cost')}</th>
+      <th onclick="setSort('value')" class="${sortCol==='value'?'sorted':''}">Markedspris${thA('value')}</th>
+      <th onclick="setSort('pl')" class="${sortCol==='pl'?'sorted':''}">P/L${thA('pl')}</th>
+      <th onclick="setSort('score')" class="${sortCol==='score'?'sorted':''}">🤖 AI-analyse${thA('score')}</th>
+      <th></th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
   } else {
     const COLS=10;
     const rows=filtered.map(item=>{
@@ -837,7 +894,7 @@ function renderTable(filtered){
 // ADD MODAL
 // ═══════════════════════════════════════════════════════
 function openAddModal(){
-  document.getElementById('modalTitle').textContent=activeTab==='graded'?'Tilføj grader kort':'Tilføj sealed produkt';
+  document.getElementById('modalTitle').textContent=activeTab==='graded'?'Tilføj grader kort':activeTab==='raw'?'Tilføj raw kort':'Tilføj sealed produkt';
   document.getElementById('modalBody').innerHTML=`
     <div class="fg"><label>Produktnavn *</label><input id="mName"/></div>
     <div class="fg-row">
@@ -890,10 +947,11 @@ function submitForm(){
     priceOverride:0,watchlist:false,
     dateAdded:document.getElementById('mDate')?.value||'',
     notes:document.getElementById('mNotes')?.value.trim()||'',
-    portfolioName:activeTab==='graded'?'Graded portfolio':'Sealed portfolio',
+    portfolioName:activeTab==='graded'?'Graded portfolio':activeTab==='raw'?'Raw portfolio':'Sealed portfolio',
     variance:'',
   };
   if(activeTab==='graded') gradedData.push(item);
+  else if(activeTab==='raw') rawData.push(item);
   else sealedData.push(item);
   saveAll(); closeModal(); render();
   showToast('✅ Tilføjet: '+name);
@@ -906,7 +964,8 @@ function closeModal(){ document.getElementById('modalBackdrop').classList.remove
 function deleteItem(id){
   if(!confirm('Slet denne post?')) return;
   if(activeTab==='graded') gradedData=gradedData.filter(i=>i.id!==id);
-  else sealedData=sealedData.filter(i=>i.id!==id);
+  else if(activeTab==='sealed') sealedData=sealedData.filter(i=>i.id!==id);
+  else rawData=rawData.filter(i=>i.id!==id);
   delete aiCache[id];
   saveAll(); render();
 }
