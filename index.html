@@ -684,10 +684,21 @@ ${item.variance?`- Variant: ${item.variance}`:''}
 3. Current demand and collector interest — is this card/product actively searched/traded right now?
 4. Specific recommendation based on the above.
 
+**CRITICAL — PSA/BGS grading probability rules (MUST follow):**
+- NEVER invent specific percentage probabilities for PSA grades (e.g. do NOT say "30% chance of PSA 10").
+- You do NOT have access to live PSA population reports — do not fabricate population numbers.
+- Instead, describe grading potential qualitatively based on the card's condition:
+  - PSA 10 requires Mint/Near Mint condition with zero defects. Moderately Played (MP), Lightly Played (LP), or lower condition cards have very low PSA 10 probability — state this clearly.
+  - Near Mint (NM) or better: describe as "strong PSA 9/10 candidate"
+  - LP: describe as "PSA 8-9 likely, PSA 10 unlikely"
+  - MP or below: describe as "PSA 7-8 range, PSA 10 very unlikely"
+- If condition is unknown, say grading potential is uncertain without more information.
+- Be honest about the limits of your knowledge.
+
 **IMPORTANT — dimension_reasoning fields:**
 - price_trend_reasoning: Explain WHY the price trend score is what it is (recent sales data, market direction, supply/demand changes). Be specific.
 - demand_reasoning: Explain WHY demand is at that level (competitive play, nostalgia, set popularity, recent announcements).
-- roi_reasoning: Explain WHY the ROI potential is what it is (grading upside, sealed appreciation, population reports, comparable sales).
+- roi_reasoning: Explain WHY the ROI potential is what it is. For grading: describe qualitative upside based on condition (no invented % probabilities). For sealed: appreciation potential. For graded: population and comparable sales.
 
 **SCORING GUIDE for overall_score:**
 - 1-6: Weak/neutral — recommend Sell or Hold only
