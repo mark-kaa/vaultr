@@ -15,6 +15,7 @@
 <meta name="author" content="Perplexity Computer">
 <meta property="og:see_also" content="https://www.perplexity.ai/computer">
 <link rel="author" href="https://www.perplexity.ai/computer">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="robots" content="noindex, nofollow"/>
@@ -215,6 +216,60 @@ tbody tr:hover .btn-del{opacity:1}
   .name-cell{max-width:110px}
   table{min-width:600px}
 }
+
+/* ── Dashboard ── */
+.dash{display:none;max-width:1400px;margin:0 auto;padding:1.25rem 1rem 3rem}
+.dash.visible{display:block}
+.dash-section{margin-bottom:2rem}
+.dash-section-title{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.dash-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:.65rem;margin-bottom:1.5rem}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.9rem 1rem;position:relative;overflow:hidden;transition:box-shadow var(--trans)}
+.kpi:hover{box-shadow:var(--shadow)}
+.kpi-accent{position:absolute;top:0;left:0;width:3px;height:100%;border-radius:var(--radius) 0 0 var(--radius)}
+.kpi-label{font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
+.kpi-value{font-size:1.35rem;font-weight:800;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-sub{font-size:.72rem;color:var(--muted);margin-top:.2rem}
+.kpi-value.green{color:var(--green)}
+.kpi-value.red{color:var(--red)}
+.kpi-value.gold{color:var(--primary)}
+.kpi-value.blue{color:var(--blue)}
+.kpi-value.teal{color:var(--teal)}
+.charts-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1rem;margin-bottom:1.5rem}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem}
+.chart-title{font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.75rem}
+.chart-wrap{position:relative;height:220px}
+.chart-wrap-sm{position:relative;height:180px}
+.dash-table{width:100%;border-collapse:collapse;font-size:.78rem}
+.dash-table th{padding:.4rem .6rem;font-size:.67rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);text-align:left}
+.dash-table td{padding:.4rem .6rem;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);vertical-align:middle}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+.dash-table td.green{color:var(--green)}
+.dash-table td.red{color:var(--red)}
+.dash-table td.gold{color:var(--primary)}
+.dash-two{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem}
+@media(max-width:700px){.dash-two{grid-template-columns:1fr}}
+.insight-list{display:flex;flex-direction:column;gap:.45rem}
+.insight-item{display:flex;align-items:flex-start;gap:.6rem;padding:.55rem .75rem;border-radius:var(--radius-sm);background:var(--surface2);font-size:.8rem;border-left:3px solid var(--border)}
+.insight-item.warn{border-left-color:var(--orange)}
+.insight-item.danger{border-left-color:var(--red)}
+.insight-item.good{border-left-color:var(--green)}
+.insight-item.info{border-left-color:var(--blue)}
+.insight-item.teal{border-left-color:var(--teal)}
+.insight-ico{font-size:1rem;flex-shrink:0;margin-top:.05rem}
+.score-bar-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.35rem;font-size:.75rem}
+.score-bar-label{width:60px;color:var(--muted);flex-shrink:0}
+.score-bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.score-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
+.score-bar-count{width:28px;text-align:right;font-weight:700;color:var(--text);flex-shrink:0}
+.rec-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.15rem .5rem;border-radius:999px;font-size:.7rem;font-weight:700}
+.rec-sell{background:#b52a2a20;color:var(--red)}
+.rec-hold{background:#e8b83020;color:var(--primary)}
+.rec-grade{background:#0c7a8520;color:var(--teal)}
+.progress-ring-wrap{display:flex;align-items:center;justify-content:center;gap:1.5rem;flex-wrap:wrap;padding:.5rem 0}
+.progress-ring-item{display:flex;flex-direction:column;align-items:center;gap:.35rem}
+.progress-ring-label{font-size:.72rem;color:var(--muted);font-weight:600;text-align:center}
 </style>
 </head>
 <body>
@@ -268,6 +323,7 @@ tbody tr:hover .btn-del{opacity:1}
 <!-- TABS -->
 <div class="tabs">
   <div class="tabs-inner">
+    <button class="tab" id="tab-overview" onclick="switchTab('overview')">📊 Overblik</button>
     <button class="tab active" id="tab-graded" onclick="switchTab('graded')">🏅 Graderede kort</button>
     <button class="tab" id="tab-sealed" onclick="switchTab('sealed')">📦 Sealed produkter</button>
     <button class="tab" id="tab-raw" onclick="switchTab('raw')">🃏 Raw kort</button>
@@ -289,8 +345,11 @@ tbody tr:hover .btn-del{opacity:1}
   <div class="analyse-progress" id="analyseProgress"></div>
 </div>
 
+<!-- DASHBOARD -->
+<div class="dash" id="dashboardPanel"></div>
+
 <!-- TABLE -->
-<div class="table-wrap"><div id="tableContainer"></div></div>
+<div class="table-wrap" id="tablePanel"><div id="tableContainer"></div></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -392,7 +451,13 @@ function switchTab(tab){
   activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRow=null;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
-  render();
+  const isOverview = tab==='overview';
+  document.getElementById('summaryBar').parentElement.style.display = isOverview?'none':'';
+  document.getElementById('toolbar').style.display = isOverview?'none':'';
+  document.getElementById('analyseProgress').parentElement.style.display = isOverview?'none':'';
+  document.getElementById('dashboardPanel').classList.toggle('visible', isOverview);
+  document.getElementById('tablePanel').style.display = isOverview?'none':'';
+  if(isOverview){ renderDashboard(); } else { render(); }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -644,6 +709,315 @@ async function runBatchAnalysis(){
   prog.innerHTML=`<span style="color:var(--green);font-weight:700">✓ ${done} analyser fuldført</span>`;
   render();
   showToast(`✅ Batch-analyse færdig: ${done} poster analyseret`);
+}
+
+// ═══════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════
+let dashCharts = {}; // hold Chart instances to destroy on re-render
+
+function destroyCharts(){
+  Object.values(dashCharts).forEach(c=>{ try{c.destroy();}catch(e){} });
+  dashCharts={};
+}
+
+function renderDashboard(){
+  destroyCharts();
+  const all = [...gradedData, ...sealedData, ...rawData];
+  if(all.length===0){
+    document.getElementById('dashboardPanel').innerHTML=`<div class="empty-state" style="padding:5rem 1rem">
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="11" fill="var(--bg)"/><path d="M4 32h56" stroke="var(--bg)" stroke-width="4"/><circle cx="32" cy="32" r="6"/></svg>
+      <p class="empty-title">Ingen data endnu</p><p style="font-size:.82rem">Upload CSV-filer for at se dit dashboard</p></div>`;
+    return;
+  }
+
+  // ── Aggregates ──
+  const gTC=gradedData.reduce((s,i)=>s+totC(i),0), gTV=gradedData.reduce((s,i)=>s+totV(i),0);
+  const sTC=sealedData.reduce((s,i)=>s+totC(i),0), sTV=sealedData.reduce((s,i)=>s+totV(i),0);
+  const rTC=rawData.reduce((s,i)=>s+totC(i),0),    rTV=rawData.reduce((s,i)=>s+totV(i),0);
+  const totalCost=gTC+sTC+rTC, totalVal=gTV+sTV+rTV, totalPL=totalVal-totalCost;
+  const totalPLpct=totalCost>0?(totalPL/totalCost*100):0;
+  const totalItems=all.length, totalQty=all.reduce((s,i)=>s+i.quantity,0);
+  const analysedCount=all.filter(i=>aiCache[i.id]).length;
+  const watchlistCount=all.filter(i=>i.watchlist).length;
+
+  // P/L per category
+  const cats={};
+  all.forEach(i=>{
+    const c=i.category||'Ukendt';
+    if(!cats[c]) cats[c]={cost:0,val:0,cnt:0};
+    cats[c].cost+=totC(i); cats[c].val+=totV(i); cats[c].cnt+=i.quantity;
+  });
+
+  // Monthly spend (by dateAdded)
+  const monthly={};
+  all.forEach(i=>{
+    if(!i.dateAdded) return;
+    const m=i.dateAdded.substring(0,7);
+    if(!monthly[m]) monthly[m]=0;
+    monthly[m]+=totC(i);
+  });
+  const monthKeys=Object.keys(monthly).sort().slice(-12);
+
+  // AI score distribution
+  const analysed=all.filter(i=>aiCache[i.id]);
+  const scoreGroups={'1-3':0,'4-6':0,'7-10':0};
+  const recGroups={'Sælg':0,'Behold råt':0,'Send til grading':0};
+  analysed.forEach(i=>{
+    const s=aiCache[i.id].overall_score||0;
+    if(s<=3) scoreGroups['1-3']++; else if(s<=6) scoreGroups['4-6']++; else scoreGroups['7-10']++;
+    const r=aiCache[i.id].recommendation||'';
+    if(recGroups[r]!==undefined) recGroups[r]++;
+  });
+
+  // Top performers (by P/L %)
+  const withCost=all.filter(i=>totC(i)>0);
+  const topGain=[...withCost].sort((a,b)=>plPct(b)-plPct(a)).slice(0,5);
+  const topLoss=[...withCost].sort((a,b)=>plPct(a)-plPct(b)).slice(0,5);
+
+  // Concentration (top 10 by value)
+  const top10=[...all].sort((a,b)=>totV(b)-totV(a)).slice(0,10);
+
+  // Grading candidates
+  const gradeCandidates=rawData.filter(i=>aiCache[i.id]&&aiCache[i.id].recommendation==='Send til grading');
+
+  // Sell candidates
+  const sellCandidates=all.filter(i=>aiCache[i.id]&&aiCache[i.id].recommendation==='Sælg');
+  const sellTotal=sellCandidates.reduce((s,i)=>s+totV(i),0);
+
+  // ── CSS colors (resolved from CSS vars) ──
+  const isDark=document.documentElement.getAttribute('data-theme')==='dark';
+  const clrGold=isDark?'#e8b830':'#b8860b';
+  const clrGreen=isDark?'#6daa45':'#3a6b1e';
+  const clrRed=isDark?'#f87171':'#b52a2a';
+  const clrBlue=isDark?'#60a5fa':'#1d4ed8';
+  const clrTeal=isDark?'#38bdf8':'#0c7a85';
+  const clrPurple=isDark?'#a78bfa':'#6b3fa0';
+  const clrOrange=isDark?'#fb923c':'#c25d00';
+  const clrBorder=isDark?'#252d42':'#ddd9d0';
+  const clrMuted=isDark?'#6b7a99':'#7a7567';
+  const clrText=isDark?'#e2e8f0':'#1e1c17';
+  const catColors=[clrGold,clrBlue,clrPurple,clrTeal,clrOrange,clrGreen,clrRed];
+
+  // ── Insights ──
+  const insights=[];
+  if(totalPLpct>=20) insights.push({cls:'good',ico:'📈',txt:`Samlet portefølje er <strong>+${totalPLpct.toFixed(1)}%</strong> — stærkt resultat.`});
+  else if(totalPLpct<-10) insights.push({cls:'danger',ico:'⚠️',txt:`Samlet portefølje er <strong>${totalPLpct.toFixed(1)}%</strong> — overvej rebalancering.`});
+  if(sellCandidates.length>0) insights.push({cls:'warn',ico:'📤',txt:`AI anbefaler at sælge <strong>${sellCandidates.length} poster</strong> med en samlet markedsværdi på ${fmtDKK(sellTotal)}.`});
+  if(gradeCandidates.length>0) insights.push({cls:'teal',ico:'🏅',txt:`<strong>${gradeCandidates.length} raw kort</strong> er AI-anbefalet til grading — potentiel PSA 10-gevinst.`});
+  const unanalysed=all.length-analysedCount;
+  if(unanalysed>0) insights.push({cls:'info',ico:'🤖',txt:`<strong>${unanalysed} poster</strong> mangler AI-analyse — klik "Analyser alle" på de respektive faner.`});
+  if(watchlistCount>0) insights.push({cls:'info',ico:'❤️',txt:`Du holder øje med <strong>${watchlistCount} poster</strong> på din watchlist.`});
+  const topCatEntry=Object.entries(cats).sort((a,b)=>(b[1].val-b[1].cost)-(a[1].val-a[1].cost))[0];
+  if(topCatEntry) insights.push({cls:'good',ico:'🌟',txt:`Bedste kategori målt på P/L: <strong>${topCatEntry[0]}</strong> med ${fmtDKK(topCatEntry[1].val-topCatEntry[1].cost)}.`});
+  // Concentration warning
+  if(top10.length>0){
+    const top1pct=totalVal>0?(totV(top10[0])/totalVal*100):0;
+    if(top1pct>20) insights.push({cls:'warn',ico:'⚠️',txt:`Koncentrationsrisiko: <strong>${esc(top10[0].productName.substring(0,35))}</strong> udgør ${top1pct.toFixed(1)}% af total porteføljeværdi.`});
+  }
+
+  // ── Build HTML ──
+  const plCls=totalPL>=0?'green':'red';
+  const plStr=(totalPLpct>=0?'+':'')+totalPLpct.toFixed(1)+'%';
+
+  document.getElementById('dashboardPanel').innerHTML=`
+  <!-- KPIs -->
+  <div class="dash-section">
+    <div class="dash-section-title">Porteføljeoverblik</div>
+    <div class="kpi-grid">
+      <div class="kpi"><div class="kpi-accent" style="background:var(--primary)"></div><div class="kpi-label">Total Kostpris</div><div class="kpi-value">${fmtDKK(totalCost)}</div><div class="kpi-sub">${totalItems} poster · ${totalQty} stk</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--primary)"></div><div class="kpi-label">Markedsværdi</div><div class="kpi-value gold">${fmtDKK(totalVal)}</div><div class="kpi-sub">Pr. ${new Date().toLocaleDateString('da-DK')}</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:${totalPL>=0?'var(--green)':'var(--red)'}"></div><div class="kpi-label">Samlet P/L</div><div class="kpi-value ${plCls}">${fmtDKK(totalPL)}</div><div class="kpi-sub">${plStr}</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--blue)"></div><div class="kpi-label">Graderede kort</div><div class="kpi-value blue">${gradedData.length}</div><div class="kpi-sub">P/L ${fmtDKK(gTV-gTC)}</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--purple)"></div><div class="kpi-label">Sealed produkter</div><div class="kpi-value" style="color:var(--purple)">${sealedData.length}</div><div class="kpi-sub">P/L ${fmtDKK(sTV-sTC)}</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--teal)"></div><div class="kpi-label">Raw kort</div><div class="kpi-value teal">${rawData.length}</div><div class="kpi-sub">P/L ${fmtDKK(rTV-rTC)}</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--purple)"></div><div class="kpi-label">AI-analyseret</div><div class="kpi-value" style="color:var(--purple)">${analysedCount}/${totalItems}</div><div class="kpi-sub">${totalItems>0?Math.round(analysedCount/totalItems*100):0}% dækning</div></div>
+      <div class="kpi"><div class="kpi-accent" style="background:var(--orange)"></div><div class="kpi-label">Salgsmuligheder</div><div class="kpi-value" style="color:var(--orange)">${sellCandidates.length}</div><div class="kpi-sub">${fmtDKK(sellTotal)} samlet</div></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 1 -->
+  <div class="dash-section">
+    <div class="dash-section-title">Kategori & Fordeling</div>
+    <div class="charts-row">
+      <div class="chart-card"><div class="chart-title">P/L per kategori</div><div class="chart-wrap"><canvas id="chartCatPL"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Eksponering per kategori (markedsværdi)</div><div class="chart-wrap"><canvas id="chartCatAlloc"></canvas></div></div>
+      <div class="chart-card"><div class="chart-title">Fordeling: Graderet / Sealed / Raw</div><div class="chart-wrap-sm"><canvas id="chartTypeSplit"></canvas></div></div>
+    </div>
+  </div>
+
+  <!-- CHARTS ROW 2 -->
+  <div class="dash-section">
+    <div class="dash-section-title">Kapitalforbrug over tid</div>
+    <div class="chart-card" style="margin-bottom:1rem"><div class="chart-title">Månedlig kostpris (seneste 12 mdr.)</div><div class="chart-wrap"><canvas id="chartMonthly"></canvas></div></div>
+  </div>
+
+  <!-- AI INDSIGTER -->
+  ${analysedCount>0?`<div class="dash-section">
+    <div class="dash-section-title">AI-indsigter</div>
+    <div class="charts-row">
+      <div class="chart-card">
+        <div class="chart-title">Score-fordeling (1-10)</div>
+        <div style="padding:.25rem 0">
+          <div class="score-bar-row"><span class="score-bar-label">Score 7-10</span><div class="score-bar-track"><div class="score-bar-fill" style="width:${analysedCount>0?Math.round(scoreGroups['7-10']/analysedCount*100):0}%;background:var(--green)"></div></div><span class="score-bar-count">${scoreGroups['7-10']}</span></div>
+          <div class="score-bar-row"><span class="score-bar-label">Score 4-6</span><div class="score-bar-track"><div class="score-bar-fill" style="width:${analysedCount>0?Math.round(scoreGroups['4-6']/analysedCount*100):0}%;background:var(--orange)"></div></div><span class="score-bar-count">${scoreGroups['4-6']}</span></div>
+          <div class="score-bar-row"><span class="score-bar-label">Score 1-3</span><div class="score-bar-track"><div class="score-bar-fill" style="width:${analysedCount>0?Math.round(scoreGroups['1-3']/analysedCount*100):0}%;background:var(--red)"></div></div><span class="score-bar-count">${scoreGroups['1-3']}</span></div>
+        </div>
+        <div style="margin-top:.75rem">
+          <div class="chart-title" style="margin-bottom:.4rem">Anbefalingsfordeling</div>
+          <div style="display:flex;gap:.4rem;flex-wrap:wrap">
+            <span class="rec-badge rec-sell">📤 Sælg: ${recGroups['Sælg']}</span>
+            <span class="rec-badge rec-hold">📦 Behold: ${recGroups['Behold råt']}</span>
+            <span class="rec-badge rec-grade">🏅 Grading: ${recGroups['Send til grading']}</span>
+          </div>
+        </div>
+      </div>
+      <div class="chart-card"><div class="chart-title">Anbefalinger (AI)</div><div class="chart-wrap-sm"><canvas id="chartRec"></canvas></div></div>
+    </div>
+  </div>`:''}
+
+  <!-- TOP PERFORMERS -->
+  <div class="dash-section">
+    <div class="dash-section-title">Top Performers</div>
+    <div class="dash-two">
+      <div class="chart-card">
+        <div class="chart-title">📈 Bedste positioner (P/L %)</div>
+        <table class="dash-table">
+          <thead><tr><th>Navn</th><th class="num">P/L %</th><th class="num">P/L DKK</th></tr></thead>
+          <tbody>${topGain.map(i=>{
+            const pct=plPct(i),pl=plAbs(i);
+            return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,28))}</td><td class="num green">+${(pct||0).toFixed(1)}%</td><td class="num green">${fmtDKK(pl)}</td></tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">📉 Svageste positioner (P/L %)</div>
+        <table class="dash-table">
+          <thead><tr><th>Navn</th><th class="num">P/L %</th><th class="num">P/L DKK</th></tr></thead>
+          <tbody>${topLoss.map(i=>{
+            const pct=plPct(i),pl=plAbs(i);
+            return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,28))}</td><td class="num red">${(pct||0).toFixed(1)}%</td><td class="num red">${fmtDKK(pl)}</td></tr>`;
+          }).join('')}</tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KONCENTRATIONSRISIKO -->
+  <div class="dash-section">
+    <div class="dash-section-title">Koncentrationsrisiko · Top 10 positioner</div>
+    <div class="chart-card">
+      <table class="dash-table">
+        <thead><tr><th>#</th><th>Navn</th><th>Type</th><th class="num">Markedsværdi</th><th class="num">% af portef.</th></tr></thead>
+        <tbody>${top10.map((i,idx)=>{
+          const pct=totalVal>0?(totV(i)/totalVal*100):0;
+          const type=i.portfolioName?.toLowerCase().includes('graded')?'Graderet':i.portfolioName?.toLowerCase().includes('sealed')?'Sealed':'Raw';
+          const barW=Math.max(4,pct/((totalVal>0?(totV(top10[0])/totalVal*100):1))*100);
+          return `<tr>
+            <td class="muted" style="font-size:.72rem;font-weight:700">${idx+1}</td>
+            <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,35))}</td>
+            <td><span class="pill pill-cat ${catClass(i.category)}" style="font-size:.65rem">${esc(i.category||'—')}</span></td>
+            <td class="num gold">${fmtDKK(totV(i))}</td>
+            <td class="num" style="min-width:100px">
+              <div style="display:flex;align-items:center;gap:.4rem;justify-content:flex-end">
+                <div style="width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="width:${barW}%;height:100%;background:var(--primary);border-radius:3px"></div></div>
+                <span>${pct.toFixed(1)}%</span>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  </div>
+
+  ${gradeCandidates.length>0?`<!-- GRADING KANDIDATER -->
+  <div class="dash-section">
+    <div class="dash-section-title">🏅 AI-anbefalede grading-kandidater</div>
+    <div class="chart-card">
+      <table class="dash-table">
+        <thead><tr><th>Navn</th><th>Sæt</th><th>Raritet</th><th class="num">Markedspris</th><th class="num">AI-score</th></tr></thead>
+        <tbody>${gradeCandidates.slice(0,10).map(i=>{
+          const ai=aiCache[i.id];
+          return `<tr>
+            <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="${esc(i.productName)}">${esc(i.productName.substring(0,30))}</td>
+            <td class="muted" style="font-size:.72rem">${esc(i.set.substring(0,22))}</td>
+            <td class="muted" style="font-size:.72rem">${esc(i.rarity||'—')}</td>
+            <td class="num gold">${fmtDKK(totV(i))}</td>
+            <td class="num"><span class="score-badge score-grade" style="cursor:default">${ai.overall_score}/10</span></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+  </div>`:''}
+
+  <!-- AI INDSIGTER PANEL -->
+  <div class="dash-section">
+    <div class="dash-section-title">Automatiske indsigter</div>
+    <div class="insight-list">${insights.map(i=>`<div class="insight-item ${i.cls}"><span class="insight-ico">${i.ico}</span><span>${i.txt}</span></div>`).join('')
+    || '<div class="insight-item info"><span class="insight-ico">🤖</span><span>Kør AI-analyse på dine poster for at se personlige indsigter.</span></div>'}
+    </div>
+  </div>
+  `;
+
+  // ── Charts ──
+  const chartDefaults = {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { labels: { color: clrMuted, font: { size: 11, family: 'Satoshi,system-ui,sans-serif' }, boxWidth: 12, padding: 10 } } },
+  };
+
+  // Cat P/L bar
+  const catNames=Object.keys(cats), catPL=catNames.map(c=>cats[c].val-cats[c].cost);
+  dashCharts.catPL=new Chart(document.getElementById('chartCatPL'),{
+    type:'bar',
+    data:{
+      labels:catNames,
+      datasets:[{label:'P/L (DKK)',data:catPL,backgroundColor:catNames.map((c,i)=>catPL[i]>=0?clrGreen+'99':clrRed+'99'),borderColor:catNames.map((c,i)=>catPL[i]>=0?clrGreen:clrRed),borderWidth:1.5,borderRadius:4}]
+    },
+    options:{...chartDefaults,plugins:{...chartDefaults.plugins,legend:{display:false}},scales:{
+      x:{ticks:{color:clrMuted,font:{size:10}},grid:{color:clrBorder}},
+      y:{ticks:{color:clrMuted,font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:clrBorder}}
+    }}
+  });
+
+  // Cat allocation doughnut
+  const catVals=catNames.map(c=>cats[c].val);
+  dashCharts.catAlloc=new Chart(document.getElementById('chartCatAlloc'),{
+    type:'doughnut',
+    data:{labels:catNames,datasets:[{data:catVals,backgroundColor:catColors.map(c=>c+'cc'),borderColor:catColors,borderWidth:1.5,hoverOffset:6}]},
+    options:{...chartDefaults,cutout:'62%',plugins:{...chartDefaults.plugins,tooltip:{callbacks:{label:ctx=>' '+fmtDKK(ctx.raw)+' ('+((ctx.raw/totalVal*100).toFixed(1))+'%)'}}}}}
+  });
+
+  // Type split doughnut
+  dashCharts.typeSplit=new Chart(document.getElementById('chartTypeSplit'),{
+    type:'doughnut',
+    data:{labels:['Graderet','Sealed','Raw'],datasets:[{data:[gTV,sTV,rTV],backgroundColor:[clrBlue+'cc',clrPurple+'cc',clrTeal+'cc'],borderColor:[clrBlue,clrPurple,clrTeal],borderWidth:1.5,hoverOffset:6}]},
+    options:{...chartDefaults,cutout:'58%',plugins:{...chartDefaults.plugins,tooltip:{callbacks:{label:ctx=>' '+fmtDKK(ctx.raw)+' ('+((totalVal>0?(ctx.raw/totalVal*100):0).toFixed(1))+'%)'}}}}}
+  });
+
+  // Monthly spend line
+  if(monthKeys.length>0){
+    dashCharts.monthly=new Chart(document.getElementById('chartMonthly'),{
+      type:'bar',
+      data:{
+        labels:monthKeys.map(m=>{ const [y,mo]=m.split('-'); return new Date(y,mo-1).toLocaleDateString('da-DK',{month:'short',year:'2-digit'}); }),
+        datasets:[{label:'Kostpris (DKK)',data:monthKeys.map(m=>monthly[m]),backgroundColor:clrGold+'55',borderColor:clrGold,borderWidth:1.5,borderRadius:4,fill:true}]
+      },
+      options:{...chartDefaults,plugins:{...chartDefaults.plugins,legend:{display:false}},scales:{
+        x:{ticks:{color:clrMuted,font:{size:10}},grid:{color:clrBorder}},
+        y:{ticks:{color:clrMuted,font:{size:10},callback:v=>v>=1000?Math.round(v/1000)+'k':v},grid:{color:clrBorder}}
+      }}
+    });
+  }
+
+  // Recommendation doughnut
+  if(analysedCount>0 && document.getElementById('chartRec')){
+    const recLabels=Object.keys(recGroups), recVals=recLabels.map(k=>recGroups[k]);
+    dashCharts.rec=new Chart(document.getElementById('chartRec'),{
+      type:'doughnut',
+      data:{labels:recLabels,datasets:[{data:recVals,backgroundColor:[clrRed+'cc',clrGold+'cc',clrTeal+'cc'],borderColor:[clrRed,clrGold,clrTeal],borderWidth:1.5,hoverOffset:6}]},
+      options:{...chartDefaults,cutout:'55%'}
+    });
+  }
 }
 
 // ═══════════════════════════════════════════════════════
