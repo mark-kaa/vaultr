@@ -641,19 +641,31 @@ async function analyseItem(item){
         return_citations: true,
       })
     });
-    if(!res.ok){ console.warn('API error', res.status); return null; }
+    if(!res.ok){
+      let errMsg = `HTTP ${res.status}`;
+      try{
+        const errData = await res.json();
+        errMsg = errData?.error?.message || errData?.detail || errMsg;
+      } catch(e2){}
+      console.error('Perplexity API fejl:', res.status, errMsg);
+      throw new Error(errMsg);
+    }
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content || '';
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if(!jsonMatch) return null;
+    // Extract JSON from response — strip markdown fences if present
+    const stripped = content.replace(/```json?\s*/gi,'').replace(/```/g,'').trim();
+    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    if(!jsonMatch){
+      console.error('Intet JSON i svar:', content.substring(0,300));
+      throw new Error('AI returnerede ikke gyldigt JSON');
+    }
     const parsed = JSON.parse(jsonMatch[0]);
     parsed.timestamp = new Date().toISOString();
     parsed.citations = data.citations || [];
     return parsed;
   } catch(e) {
-    console.error('Analysis error:', e);
-    return null;
+    console.error('Analyse fejl:', e);
+    throw e; // re-throw so caller can show the real message
   }
 }
 
@@ -667,15 +679,21 @@ async function runSingleAnalysis(itemId){
   const btn = document.getElementById('abtn-'+itemId);
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">⟳</span> Analyserer...'; }
 
-  const result = await analyseItem(item);
-  if(result){
-    aiCache[itemId] = result;
-    saveAll();
-    expandedRow = itemId;
-    render();
-    showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
-  } else {
-    showToast('❌ Analyse fejlede — tjek din API-nøgle');
+  try{
+    const result = await analyseItem(item);
+    if(result){
+      aiCache[itemId] = result;
+      saveAll();
+      expandedRow = itemId;
+      render();
+      showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
+    } else {
+      showToast('❌ Tomt svar fra API');
+      if(btn){ btn.disabled=false; btn.innerHTML='🤖 Analysér'; }
+    }
+  } catch(e){
+    const msg = e.message || 'Ukendt fejl';
+    showToast('❌ API-fejl: '+msg.substring(0,80));
     if(btn){ btn.disabled=false; btn.innerHTML='🤖 Analysér'; }
   }
 }
@@ -697,8 +715,14 @@ async function runBatchAnalysis(){
 
   for(const item of toAnalyse){
     prog.innerHTML = `Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`;
-    const result = await analyseItem(item);
-    if(result){ aiCache[item.id]=result; saveAll(); }
+    try{
+      const result = await analyseItem(item);
+      if(result){ aiCache[item.id]=result; saveAll(); }
+    } catch(e){
+      const msg=(e.message||'fejl').substring(0,60);
+      prog.innerHTML=`<span style="color:var(--red)">Fejl på "${esc(item.productName.substring(0,30))}": ${esc(msg)} — fortsætter...</span>`;
+      await new Promise(r=>setTimeout(r,2000)); // pause so user can read error
+    }
     done++;
     // Small delay to avoid rate limiting
     await new Promise(r=>setTimeout(r,800));
