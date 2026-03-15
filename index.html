@@ -24,93 +24,112 @@
 <style>
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --bg:#f7f5f0; --surface:#ffffff; --surface2:#f0ede6; --surface3:#e8e4dc;
-  --border:#ddd9d0; --text:#1e1c17; --muted:#7a7567; --faint:#b8b3a8;
-  --primary:#b8860b; --primary-light:#f0c030; --primary-fg:#1a1200;
-  --teal:#0c7a85; --green:#3a6b1e; --orange:#c25d00; --red:#b52a2a; --purple:#6b3fa0;
-  --radius:0.75rem; --radius-sm:0.4rem; --radius-xs:0.25rem;
+  --bg:#f7f5f0;--surface:#fff;--surface2:#f0ede6;--surface3:#e8e4dc;
+  --border:#ddd9d0;--text:#1e1c17;--muted:#7a7567;--faint:#b8b3a8;
+  --primary:#b8860b;--primary-light:#f0c030;--primary-fg:#1a1200;
+  --teal:#0c7a85;--green:#3a6b1e;--orange:#c25d00;--red:#b52a2a;--purple:#6b3fa0;--blue:#1d4ed8;
+  --radius:.75rem;--radius-sm:.4rem;--radius-xs:.25rem;
   --shadow:0 1px 4px rgba(0,0,0,.06),0 4px 16px rgba(0,0,0,.06);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.14);
   --trans:160ms cubic-bezier(.16,1,.3,1);
 }
 [data-theme="dark"]{
-  --bg:#0d1117; --surface:#161b27; --surface2:#1c2235; --surface3:#222840;
-  --border:#252d42; --text:#e2e8f0; --muted:#6b7a99; --faint:#3a4560;
-  --primary:#e8b830; --primary-light:#f5d060; --primary-fg:#120e00;
-  --teal:#38bdf8; --green:#6daa45; --orange:#fb923c; --red:#f87171; --purple:#a78bfa;
+  --bg:#0d1117;--surface:#161b27;--surface2:#1c2235;--surface3:#222840;
+  --border:#252d42;--text:#e2e8f0;--muted:#6b7a99;--faint:#3a4560;
+  --primary:#e8b830;--primary-light:#f5d060;--primary-fg:#120e00;
+  --teal:#38bdf8;--green:#6daa45;--orange:#fb923c;--red:#f87171;--purple:#a78bfa;--blue:#60a5fa;
   --shadow:0 1px 4px rgba(0,0,0,.2),0 4px 16px rgba(0,0,0,.3);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.5);
+  --shadow-lg:0 8px 40px rgba(0,0,0,.55);
 }
 html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
 body{font-family:'Satoshi',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;font-size:15px;line-height:1.5}
 button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
 input,select,textarea{font:inherit;color:inherit}
-a{color:inherit;text-decoration:none}
 
 /* ── Header ── */
 header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border)}
-.header-inner{display:flex;align-items:center;gap:.6rem;height:3.25rem;max-width:1400px;margin:0 auto;padding:0 1rem}
-.logo{display:flex;align-items:center;gap:.45rem;font-weight:700;font-size:.95rem;flex-shrink:0;white-space:nowrap}
-.search-wrap{flex:1;position:relative;max-width:360px}
+.hdr{display:flex;align-items:center;gap:.6rem;height:3.25rem;max-width:1400px;margin:0 auto;padding:0 1rem}
+.logo{display:flex;align-items:center;gap:.45rem;font-weight:700;font-size:.95rem;flex-shrink:0}
+.search-wrap{flex:1;position:relative;max-width:320px}
 .search-wrap input{width:100%;height:2.1rem;padding:0 2rem 0 2.1rem;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border);outline:none;font-size:.85rem;transition:border-color var(--trans)}
 .search-wrap input:focus{border-color:var(--primary)}
-.search-icon{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none;width:14px;height:14px}
-.search-clear{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);color:var(--muted);display:none;padding:.15rem;border-radius:50%}
-.search-clear.show{display:flex}
-.header-spacer{flex:1}
-.btn-icon{width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--muted);flex-shrink:0;transition:background var(--trans),color var(--trans)}
+.s-ico{position:absolute;left:.6rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.s-clr{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);color:var(--muted);display:none}
+.s-clr.show{display:flex}
+.spacer{flex:1}
+.btn-icon{width:2.1rem;height:2.1rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--muted);transition:background var(--trans),color var(--trans)}
 .btn-icon:hover{background:var(--surface2);color:var(--text)}
 .btn-primary{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .85rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-fg);font-weight:700;font-size:.82rem;flex-shrink:0;transition:opacity var(--trans)}
 .btn-primary:hover{opacity:.85}
-.btn-label{display:none}
-@media(min-width:520px){.btn-label{display:inline}}
+.btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.lbl{display:none}
+@media(min-width:520px){.lbl{display:inline}}
+
+/* ── API key banner ── */
+.api-banner{background:color-mix(in srgb,var(--blue) 12%,var(--surface));border-bottom:1px solid color-mix(in srgb,var(--blue) 25%,var(--border));padding:.55rem 1rem}
+.api-banner-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;font-size:.8rem}
+.api-banner input{flex:1;min-width:200px;max-width:380px;padding:.35rem .65rem;border-radius:var(--radius-sm);border:1.5px solid color-mix(in srgb,var(--blue) 40%,var(--border));background:var(--surface);font-size:.82rem;outline:none;font-family:monospace}
+.api-banner input:focus{border-color:var(--blue)}
+.api-key-label{color:var(--blue);font-weight:700;white-space:nowrap}
+.btn-save-key{padding:.3rem .75rem;border-radius:var(--radius-sm);background:var(--blue);color:#fff;font-weight:700;font-size:.78rem;transition:opacity var(--trans);flex-shrink:0}
+.btn-save-key:hover{opacity:.85}
+.key-status{font-size:.75rem;color:var(--muted)}
+.key-status.ok{color:var(--green);font-weight:600}
 
 /* ── Tabs ── */
 .tabs{background:var(--bg);border-bottom:1px solid var(--border)}
-.tabs-inner{max-width:1400px;margin:0 auto;padding:0 1rem;display:flex;gap:0}
+.tabs-inner{max-width:1400px;margin:0 auto;padding:0 1rem;display:flex}
 .tab{padding:.65rem 1.1rem;font-size:.85rem;font-weight:600;color:var(--muted);border-bottom:2px solid transparent;transition:all var(--trans);white-space:nowrap}
 .tab:hover{color:var(--text)}
 .tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 
-/* ── Summary bar ── */
+/* ── Summary ── */
 .summary{background:var(--surface);border-bottom:1px solid var(--border)}
-.summary-inner{max-width:1400px;margin:0 auto;padding:.6rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;align-items:center}
+.sum-inner{max-width:1400px;margin:0 auto;padding:.6rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem 1.5rem;align-items:center}
 .stat{display:flex;align-items:center;gap:.4rem;font-size:.8rem}
-.stat-label{color:var(--muted)}
-.stat-val{font-weight:700;color:var(--text)}
+.stat-lbl{color:var(--muted)}
+.stat-val{font-weight:700}
 .stat-val.green{color:var(--green)}
 .stat-val.red{color:var(--red)}
 .stat-val.gold{color:var(--primary)}
-.summary-divider{width:1px;height:1rem;background:var(--border)}
+.stat-val.blue{color:var(--blue)}
+.sdiv{width:1px;height:1rem;background:var(--border)}
 
 /* ── Toolbar ── */
 .toolbar{max-width:1400px;margin:0 auto;padding:.6rem 1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
 .chip{padding:.22rem .65rem;border-radius:999px;font-size:.75rem;font-weight:600;background:var(--surface2);color:var(--muted);border:1.5px solid transparent;cursor:pointer;transition:all var(--trans);white-space:nowrap}
 .chip:hover{color:var(--text);border-color:var(--border)}
 .chip.active{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
-.toolbar-sep{width:1px;height:1.1rem;background:var(--border);flex-shrink:0}
-.sort-select{padding:.22rem .6rem;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);font-size:.78rem;color:var(--muted);outline:none;cursor:pointer}
+.tb-sep{width:1px;height:1.1rem;background:var(--border);flex-shrink:0}
+.sort-sel{padding:.22rem .6rem;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);font-size:.78rem;color:var(--muted);outline:none;cursor:pointer}
+
+/* ── Batch analyse bar ── */
+.analyse-bar{max-width:1400px;margin:0 auto;padding:.4rem 1rem;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap}
+.btn-analyse-all{display:inline-flex;align-items:center;gap:.4rem;padding:.38rem .9rem;border-radius:var(--radius);background:color-mix(in srgb,var(--purple) 18%,var(--surface2));color:var(--purple);font-weight:700;font-size:.8rem;border:1.5px solid color-mix(in srgb,var(--purple) 35%,var(--border));transition:all var(--trans)}
+.btn-analyse-all:hover{background:color-mix(in srgb,var(--purple) 28%,var(--surface2))}
+.btn-analyse-all:disabled{opacity:.45;cursor:not-allowed}
+.analyse-progress{font-size:.77rem;color:var(--muted)}
+.analyse-progress span{color:var(--purple);font-weight:700}
 
 /* ── Table ── */
-.table-wrap{max-width:1400px;margin:0 auto;padding:0 1rem 2rem;overflow-x:auto}
-table{width:100%;border-collapse:collapse;font-size:.8rem;min-width:700px}
-thead th{padding:.5rem .6rem;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2;cursor:pointer;user-select:none}
+.table-wrap{max-width:1400px;margin:0 auto;padding:0 1rem 3rem;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.8rem;min-width:820px}
+thead th{padding:.5rem .6rem;text-align:left;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--surface);border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none;position:sticky;top:0;z-index:2}
 thead th:hover{color:var(--text)}
-thead th .sort-arrow{margin-left:.3rem;opacity:.4}
-thead th.sorted .sort-arrow{opacity:1;color:var(--primary)}
+thead th.sorted{color:var(--primary)}
+.s-arr{margin-left:.25rem;opacity:.4}
+thead th.sorted .s-arr{opacity:1}
 tbody tr{border-bottom:1px solid var(--border);transition:background var(--trans)}
 tbody tr:hover{background:var(--surface)}
-tbody td{padding:.45rem .6rem;vertical-align:middle;color:var(--text)}
-tbody td.muted{color:var(--muted)}
-tbody td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
-tbody td.num.green{color:var(--green)}
-tbody td.num.red{color:var(--red)}
-tbody td.num.gold{color:var(--primary)}
+tbody td{padding:.45rem .6rem;vertical-align:middle}
+td.muted{color:var(--muted)}
+td.num{text-align:right;font-variant-numeric:tabular-nums;font-weight:600}
+td.num.green{color:var(--green)}
+td.num.red{color:var(--red)}
+td.num.gold{color:var(--primary)}
+.name-cell{max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
+.set-cell{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .pill{display:inline-flex;align-items:center;padding:.15rem .5rem;border-radius:999px;font-size:.7rem;font-weight:700;white-space:nowrap}
-.pill-grade{background:#0c7a8520;color:var(--teal)}
-.pill-hold{background:#e8b83020;color:var(--primary)}
-.pill-sell{background:#b52a2a20;color:var(--red)}
-.pill-undecided{background:var(--surface3);color:var(--muted)}
 .pill-psa10{background:#1a4a8a20;color:#5b9cf6}
 .pill-psa9{background:#16652020;color:var(--green)}
 .pill-psa8{background:#c25d0020;color:var(--orange)}
@@ -121,26 +140,45 @@ tbody td.num.gold{color:var(--primary)}
 .pill-op{background:#dc143c15;color:#e05a70}
 .pill-mtg{background:#8b450015;color:#d4730a}
 .pill-rb{background:#1a6b3015;color:#4caf70}
-.grade-val{font-weight:700}
-.decision-btn{cursor:pointer;border:none;background:none;font:inherit;transition:opacity var(--trans)}
-.decision-btn:hover{opacity:.7}
 .btn-del{opacity:0;padding:.2rem .4rem;border-radius:.3rem;font-size:.72rem;color:var(--muted);transition:all var(--trans)}
 tbody tr:hover .btn-del{opacity:1}
 .btn-del:hover{background:#b52a2a20;color:var(--red)}
-.name-cell{max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
-.set-cell{max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
-/* ── Empty ── */
-.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 1rem;gap:.75rem;color:var(--muted);text-align:center}
-.empty-state svg{opacity:.2}
-.empty-title{font-size:.95rem;font-weight:700;color:var(--text)}
+/* ── AI Score cell ── */
+.ai-cell{min-width:160px}
+.score-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .55rem;border-radius:.4rem;font-size:.78rem;font-weight:700;cursor:pointer;transition:all var(--trans)}
+.score-badge:hover{opacity:.8}
+.score-sell{background:#b52a2a22;color:var(--red);border:1px solid #b52a2a44}
+.score-hold{background:#e8b83022;color:var(--primary);border:1px solid #e8b83044}
+.score-grade{background:#0c7a8522;color:var(--teal);border:1px solid #0c7a8544}
+.score-na{background:var(--surface2);color:var(--muted);border:1px solid var(--border);font-weight:500;font-size:.72rem}
+.btn-analyse{display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .5rem;border-radius:.35rem;font-size:.72rem;font-weight:600;background:color-mix(in srgb,var(--purple) 15%,var(--surface2));color:var(--purple);border:1px solid color-mix(in srgb,var(--purple) 30%,var(--border));transition:all var(--trans);white-space:nowrap}
+.btn-analyse:hover{background:color-mix(in srgb,var(--purple) 25%,var(--surface2))}
+.btn-analyse:disabled{opacity:.4;cursor:not-allowed}
+.spin{display:inline-block;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* ── Upload zone ── */
-.upload-zone{border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;cursor:pointer;transition:all var(--trans);background:var(--surface)}
-.upload-zone:hover,.upload-zone.drag{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 5%,var(--surface))}
-.upload-zone input{display:none}
-.upload-title{font-weight:700;margin-bottom:.3rem;font-size:.9rem}
-.upload-sub{font-size:.78rem;color:var(--muted)}
+/* ── AI Detail panel (expandable row) ── */
+.ai-detail-row td{padding:0!important;border-bottom:2px solid color-mix(in srgb,var(--purple) 30%,var(--border))}
+.ai-detail-inner{padding:.75rem 1rem .85rem;background:color-mix(in srgb,var(--purple) 6%,var(--surface));border-left:3px solid var(--purple)}
+.ai-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
+.ai-detail-title{font-size:.8rem;font-weight:700;color:var(--purple)}
+.ai-detail-close{color:var(--muted);padding:.1rem .3rem;border-radius:.25rem;font-size:.75rem;transition:all var(--trans)}
+.ai-detail-close:hover{background:var(--surface3);color:var(--text)}
+.ai-scores-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem}
+.score-dim{display:flex;flex-direction:column;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.4rem .6rem;min-width:80px}
+.score-dim-label{font-size:.65rem;color:var(--muted);margin-bottom:.2rem;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.score-dim-val{font-size:1.1rem;font-weight:800}
+.score-dim-val.high{color:var(--green)}
+.score-dim-val.mid{color:var(--orange)}
+.score-dim-val.low{color:var(--red)}
+.ai-reasoning{font-size:.82rem;line-height:1.65;color:var(--text)}
+.ai-sources{margin-top:.5rem;font-size:.72rem;color:var(--muted);font-style:italic}
+.ai-timestamp{font-size:.68rem;color:var(--faint);margin-top:.25rem}
+.ai-rec-chip{display:inline-flex;align-items:center;gap:.3rem;padding:.25rem .65rem;border-radius:999px;font-size:.8rem;font-weight:800;margin-bottom:.5rem}
+.ai-rec-sell{background:#b52a2a22;color:var(--red);border:1.5px solid #b52a2a55}
+.ai-rec-hold{background:#e8b83022;color:var(--primary);border:1.5px solid #e8b83055}
+.ai-rec-grade{background:#0c7a8522;color:var(--teal);border:1.5px solid #0c7a8555}
 
 /* ── Modal ── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)}
@@ -157,29 +195,25 @@ tbody tr:hover .btn-del{opacity:1}
 .fg input:focus,.fg select:focus,.fg textarea:focus{border-color:var(--primary)}
 .fg textarea{resize:vertical;min-height:3rem}
 .fg-row{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
-.dec-grid{display:grid;grid-template-columns:1fr 1fr;gap:.4rem;margin-top:.2rem}
-.dec-opt{padding:.45rem .4rem;border-radius:.5rem;font-size:.78rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.3rem;border:2px solid var(--border);background:var(--surface2);color:var(--muted);transition:all var(--trans);cursor:pointer}
-.dec-opt.sel-grade{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 12%,transparent);color:var(--teal)}
-.dec-opt.sel-hold{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 12%,transparent);color:var(--primary)}
-.dec-opt.sel-sell{border-color:var(--red);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red)}
-.dec-opt.sel-undecided{border-color:var(--muted);background:var(--surface);color:var(--muted)}
 .form-actions{display:flex;gap:.45rem;margin-top:.75rem}
 .btn-sub{flex:1;padding:.5rem 1rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-fg);font-weight:700;font-size:.88rem;transition:opacity var(--trans)}
 .btn-sub:hover{opacity:.85}
-.btn-sub:disabled{opacity:.4;cursor:not-allowed}
-.btn-can{padding:.5rem .9rem;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:.88rem;transition:all var(--trans)}
+.btn-can{padding:.5rem .9rem;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:.88rem}
 .btn-can:hover{color:var(--text)}
 
+/* ── Empty ── */
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 1rem;gap:.75rem;color:var(--muted);text-align:center}
+.empty-state svg{opacity:.2}
+.empty-title{font-size:.95rem;font-weight:700;color:var(--text)}
+
 /* ── Toast ── */
-.toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.65rem 1rem;font-size:.82rem;font-weight:600;box-shadow:var(--shadow-lg);transform:translateY(2rem);opacity:0;transition:all .25s ease;pointer-events:none}
+.toast{position:fixed;bottom:1.5rem;right:1.5rem;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.65rem 1rem;font-size:.82rem;font-weight:600;box-shadow:var(--shadow-lg);transform:translateY(2rem);opacity:0;transition:all .25s ease;pointer-events:none;max-width:340px}
 .toast.show{transform:translateY(0);opacity:1}
 
-/* ── Responsive ── */
 @media(max-width:640px){
-  .hide-mobile{display:none!important}
-  .name-cell{max-width:120px}
-  .set-cell{max-width:90px}
-  table{min-width:500px}
+  .hide-mob{display:none!important}
+  .name-cell{max-width:110px}
+  table{min-width:600px}
 }
 </style>
 </head>
@@ -187,7 +221,7 @@ tbody tr:hover .btn-del{opacity:1}
 
 <!-- HEADER -->
 <header>
-  <div class="header-inner">
+  <div class="hdr">
     <div class="logo">
       <svg width="26" height="26" viewBox="0 0 32 32" fill="none">
         <circle cx="16" cy="16" r="14" fill="var(--primary)"/>
@@ -197,35 +231,39 @@ tbody tr:hover .btn-del{opacity:1}
       </svg>
       <span>Pokémon Portfolio</span>
     </div>
-
     <div class="search-wrap">
-      <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-      <input id="searchInput" type="search" placeholder="Søg navn, sæt, grad..." autocomplete="off"/>
-      <button class="search-clear" id="searchClear" onclick="clearSearch()">
+      <svg class="s-ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input id="searchInput" type="search" placeholder="Søg navn, sæt, grade..." autocomplete="off"/>
+      <button class="s-clr" id="searchClear" onclick="clearSearch()">
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
     </div>
-
-    <div class="header-spacer"></div>
-
-    <!-- CSV upload -->
-    <label class="btn-primary" title="Upload CSV" style="cursor:pointer">
+    <div class="spacer"></div>
+    <label class="btn-primary" style="cursor:pointer" title="Upload CSV">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      <span class="btn-label">Upload CSV</span>
+      <span class="lbl">Upload CSV</span>
       <input type="file" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
     </label>
-
-    <!-- Add item -->
     <button class="btn-primary" onclick="openAddModal()" style="margin-left:.25rem">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-      <span class="btn-label">Tilføj</span>
+      <span class="lbl">Tilføj</span>
     </button>
-
     <button class="btn-icon" onclick="toggleTheme()" title="Skift tema">
       <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
   </div>
 </header>
+
+<!-- API KEY BANNER -->
+<div class="api-banner">
+  <div class="api-banner-inner">
+    <span class="api-key-label">🤖 Perplexity API-nøgle</span>
+    <input type="password" id="apiKeyInput" placeholder="pplx-xxxxxxxxxxxxxxxx" autocomplete="off"/>
+    <button class="btn-save-key" onclick="saveApiKey()">Gem nøgle</button>
+    <span class="key-status" id="keyStatus">Ingen nøgle gemt — analyser er deaktiveret</span>
+    <a href="https://www.perplexity.ai/settings/api" target="_blank" style="font-size:.73rem;color:var(--blue);text-decoration:underline">Hent API-nøgle →</a>
+  </div>
+</div>
 
 <!-- TABS -->
 <div class="tabs">
@@ -235,27 +273,32 @@ tbody tr:hover .btn-del{opacity:1}
   </div>
 </div>
 
-<!-- SUMMARY BAR -->
-<div class="summary">
-  <div class="summary-inner" id="summaryBar"></div>
-</div>
+<!-- SUMMARY -->
+<div class="summary"><div class="sum-inner" id="summaryBar"></div></div>
 
 <!-- TOOLBAR -->
 <div class="toolbar" id="toolbar"></div>
 
-<!-- TABLE -->
-<div class="table-wrap">
-  <div id="tableContainer"></div>
+<!-- BATCH ANALYSE BAR -->
+<div class="analyse-bar">
+  <button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" disabled>
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m17 7 5-5"/><path d="M17 2h5v5"/></svg>
+    Analyser alle (AI)
+  </button>
+  <div class="analyse-progress" id="analyseProgress"></div>
 </div>
+
+<!-- TABLE -->
+<div class="table-wrap"><div id="tableContainer"></div></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 
-<!-- ADD/EDIT MODAL -->
+<!-- ADD MODAL -->
 <div class="modal-backdrop" id="modalBackdrop" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-hdr">
-      <span class="modal-title" id="modalTitle">Tilføj kort</span>
+      <span class="modal-title" id="modalTitle">Tilføj</span>
       <button class="modal-close" onclick="closeModal()">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
       </button>
@@ -264,95 +307,117 @@ tbody tr:hover .btn-del{opacity:1}
   </div>
 </div>
 
-<footer style="border-top:1px solid var(--border);padding:1rem;text-align:center;font-size:.72rem;color:var(--muted);margin-top:1rem">
+<footer style="border-top:1px solid var(--border);padding:1rem;text-align:center;font-size:.72rem;color:var(--muted)">
   Privat portfolio ·
   <a href="https://www.perplexity.ai/computer" target="_blank" style="transition:color var(--trans)">Created with Perplexity Computer</a>
 </footer>
 
 <script>
-// ── Storage ────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════
 let gradedData  = JSON.parse(localStorage.getItem('pf_graded')  || '[]');
 let sealedData  = JSON.parse(localStorage.getItem('pf_sealed')  || '[]');
-let gradedDecisions = JSON.parse(localStorage.getItem('pf_dec_graded') || '{}');
-let sealedDecisions = JSON.parse(localStorage.getItem('pf_dec_sealed') || '{}');
+// AI analyses: { [itemId]: { recommendation, score, reasoning, dimensions, timestamp } }
+let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
+let expandedRow = null; // currently expanded AI detail row id
 
 function saveAll(){
-  localStorage.setItem('pf_graded',  JSON.stringify(gradedData));
-  localStorage.setItem('pf_sealed',  JSON.stringify(sealedData));
-  localStorage.setItem('pf_dec_graded', JSON.stringify(gradedDecisions));
-  localStorage.setItem('pf_dec_sealed', JSON.stringify(sealedDecisions));
+  localStorage.setItem('pf_graded', JSON.stringify(gradedData));
+  localStorage.setItem('pf_sealed', JSON.stringify(sealedData));
+  localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
 }
 
-// ── State ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// API KEY
+// ═══════════════════════════════════════════════════════
+let apiKey = localStorage.getItem('pf_api_key') || '';
+function initApiKey(){
+  if(apiKey){
+    document.getElementById('apiKeyInput').value = apiKey;
+    document.getElementById('keyStatus').textContent = '✓ Nøgle gemt — AI-analyse aktiveret';
+    document.getElementById('keyStatus').classList.add('ok');
+    document.getElementById('batchBtn').disabled = false;
+  }
+}
+function saveApiKey(){
+  apiKey = document.getElementById('apiKeyInput').value.trim();
+  if(!apiKey){ showToast('❌ Ingen nøgle indtastet'); return; }
+  localStorage.setItem('pf_api_key', apiKey);
+  document.getElementById('keyStatus').textContent = '✓ Nøgle gemt — AI-analyse aktiveret';
+  document.getElementById('keyStatus').classList.add('ok');
+  document.getElementById('batchBtn').disabled = false;
+  showToast('✅ API-nøgle gemt');
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════
 let activeTab = 'graded';
 let searchQ   = '';
 let sortCol   = 'name';
 let sortAsc   = true;
 let filterCat = 'Alle';
-let editIdx   = null;
-let formDec   = 'Uafgjort';
+let batchRunning = false;
 
-// ── Theme ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// THEME
+// ═══════════════════════════════════════════════════════
 function toggleTheme(){
-  const d = document.documentElement;
-  const dark = d.getAttribute('data-theme')==='dark';
-  d.setAttribute('data-theme', dark ? 'light' : 'dark');
+  const d=document.documentElement, dark=d.getAttribute('data-theme')==='dark';
+  d.setAttribute('data-theme', dark?'light':'dark');
   document.getElementById('themeIcon').innerHTML = dark
     ? '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>'
     : '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>';
 }
 
-// ── Search ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// SEARCH
+// ═══════════════════════════════════════════════════════
 document.getElementById('searchInput').addEventListener('input', function(){
-  searchQ = this.value.toLowerCase();
-  document.getElementById('searchClear').classList.toggle('show', !!this.value);
+  searchQ=this.value.toLowerCase();
+  document.getElementById('searchClear').classList.toggle('show',!!this.value);
   render();
 });
-function clearSearch(){
-  document.getElementById('searchInput').value='';
-  document.getElementById('searchClear').classList.remove('show');
-  searchQ=''; render();
-}
+function clearSearch(){ document.getElementById('searchInput').value=''; document.getElementById('searchClear').classList.remove('show'); searchQ=''; render(); }
 
-// ── Tab switch ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// TAB
+// ═══════════════════════════════════════════════════════
 function switchTab(tab){
-  activeTab = tab;
-  filterCat = 'Alle';
-  sortCol = 'name'; sortAsc = true;
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRow=null;
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   document.getElementById('tab-'+tab).classList.add('active');
   render();
 }
 
-// ── CSV Parser ─────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// CSV
+// ═══════════════════════════════════════════════════════
 function parseCSV(text){
-  const rows = [];
-  const lines = text.split(/\r?\n/);
-  const headers = splitCSVLine(lines[0]);
+  const lines=text.split(/\r?\n/), headers=splitLine(lines[0]), rows=[];
   for(let i=1;i<lines.length;i++){
-    const line = lines[i].trim();
-    if(!line) continue;
-    const vals = splitCSVLine(line);
-    const obj = {};
-    headers.forEach((h,idx) => { obj[h.trim()] = (vals[idx]||'').trim(); });
+    const line=lines[i].trim(); if(!line) continue;
+    const vals=splitLine(line), obj={};
+    headers.forEach((h,idx)=>{ obj[h.trim()]=(vals[idx]||'').trim(); });
     rows.push(obj);
   }
   return rows;
 }
-function splitCSVLine(line){
-  const res=[]; let cur=''; let inQ=false;
+function splitLine(line){
+  const res=[]; let cur='',inQ=false;
   for(let i=0;i<line.length;i++){
-    if(line[i]==='"'){ inQ=!inQ; continue; }
-    if(line[i]===',' && !inQ){ res.push(cur); cur=''; continue; }
+    if(line[i]==='"'){inQ=!inQ;continue;}
+    if(line[i]===','&&!inQ){res.push(cur);cur='';continue;}
     cur+=line[i];
   }
   res.push(cur); return res;
 }
-function parseNum(s){ return parseFloat((s||'').replace(/,/g,''))||0; }
-
+function pNum(s){ return parseFloat((s||'').replace(/,/g,''))||0; }
 function csvRowToItem(row){
   return {
-    id: Math.random().toString(36).slice(2),
+    id: Math.random().toString(36).slice(2)+Date.now().toString(36),
     portfolioName: row['Portfolio Name']||'',
     category:      row['Category']||'',
     set:           row['Set']||'',
@@ -362,150 +427,236 @@ function csvRowToItem(row){
     variance:      row['Variance']||'',
     grade:         row['Grade']||'',
     condition:     row['Card Condition']||'',
-    costPaid:      parseNum(row['Average Cost Paid']),
+    costPaid:      pNum(row['Average Cost Paid']),
     quantity:      parseInt(row['Quantity'])||1,
-    marketPrice:   parseNum(row['Market Price (As of 2026-03-15)']),
-    priceOverride: parseNum(row['Price Override'])||0,
+    marketPrice:   pNum(row['Market Price (As of 2026-03-15)']),
+    priceOverride: pNum(row['Price Override'])||0,
     watchlist:     (row['Watchlist']||'').toLowerCase()==='true',
     dateAdded:     row['Date Added']||'',
     notes:         (row['Notes']||'').replace(/;/g,'').trim(),
   };
 }
-
 function handleCSV(input){
-  const files = Array.from(input.files);
-  let gradedAdded=0, sealedAdded=0;
-  let pending = files.length;
-
-  files.forEach(file => {
-    const reader = new FileReader();
-    reader.onload = e => {
-      const rows = parseCSV(e.target.result);
-      rows.forEach(row => {
-        const item = csvRowToItem(row);
+  const files=Array.from(input.files); let gAdd=0,sAdd=0,pending=files.length;
+  files.forEach(file=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const rows=parseCSV(e.target.result);
+      rows.forEach(row=>{
+        const item=csvRowToItem(row);
         if(!item.productName) return;
-        const portfolio = (item.portfolioName||'').toLowerCase();
-        if(portfolio.includes('graded') || (item.grade && item.grade!=='Ungraded')){
-          // Check for duplicate by productName+cardNumber+grade
-          const dup = gradedData.find(d => d.productName===item.productName && d.cardNumber===item.cardNumber && d.grade===item.grade);
-          if(!dup){ gradedData.push(item); gradedAdded++; }
+        const pf=(item.portfolioName||'').toLowerCase();
+        if(pf.includes('graded')||(item.grade&&item.grade!=='Ungraded')){
+          const dup=gradedData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.grade===item.grade);
+          if(!dup){gradedData.push(item);gAdd++;}
         } else {
-          const dup = sealedData.find(d => d.productName===item.productName && d.set===item.set && d.quantity===item.quantity);
-          if(!dup){ sealedData.push(item); sealedAdded++; }
+          const dup=sealedData.find(d=>d.productName===item.productName&&d.set===item.set);
+          if(!dup){sealedData.push(item);sAdd++;}
         }
       });
       pending--;
-      if(pending===0){
-        saveAll();
-        showToast(`✅ Importeret: ${gradedAdded} graderede, ${sealedAdded} sealed`);
-        render();
-      }
+      if(pending===0){ saveAll(); showToast(`✅ Importeret: ${gAdd} graderede, ${sAdd} sealed`); render(); }
     };
-    reader.readAsText(file, 'UTF-8');
+    r.readAsText(file,'UTF-8');
   });
   input.value='';
 }
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-function effectivePrice(item){
-  return item.priceOverride>0 ? item.priceOverride : item.marketPrice;
-}
-function totalValue(item){ return effectivePrice(item)*item.quantity; }
-function costTotal(item){ return item.costPaid*item.quantity; }
-function pl(item){ return totalValue(item)-costTotal(item); }
-function plPct(item){
-  const c=costTotal(item);
-  return c===0?null:((totalValue(item)-c)/c*100);
-}
-
-function fmtDKK(n){
-  if(!n && n!==0) return '—';
-  return n.toLocaleString('da-DK',{minimumFractionDigits:0,maximumFractionDigits:0})+' DKK';
-}
-function fmtPct(n){ return n===null?'—':(n>=0?'+':'')+n.toFixed(1)+'%'; }
+// ═══════════════════════════════════════════════════════
+// HELPERS
+// ═══════════════════════════════════════════════════════
+const eff   = i => i.priceOverride>0 ? i.priceOverride : i.marketPrice;
+const totV  = i => eff(i)*i.quantity;
+const totC  = i => i.costPaid*i.quantity;
+const plAbs = i => totV(i)-totC(i);
+const plPct = i => { const c=totC(i); return c===0?null:((totV(i)-c)/c*100); };
+const fmtDKK= n => (n&&n!==0)?n.toLocaleString('da-DK',{minimumFractionDigits:0,maximumFractionDigits:0})+' DKK':'—';
+const fmtP  = n => n===null?'—':(n>=0?'+':'')+n.toFixed(1)+'%';
+const esc   = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 
 function gradeClass(g){
   if(!g||g==='Ungraded') return '';
-  const gl=g.toLowerCase();
-  if(gl.includes('psa 10')||gl.includes('gem')) return 'pill-psa10';
-  if(gl.includes('psa 9')||gl.includes('mint')) return 'pill-psa9';
-  if(gl.includes('psa 8')||gl.includes('nm')) return 'pill-psa8';
-  if(gl.includes('bgs')||gl.includes('bgс')) return 'pill-bgs';
-  if(gl.includes('cgc')) return 'pill-cgc';
+  const l=g.toLowerCase();
+  if(l.includes('psa 10')||l.includes('gem')) return 'pill-psa10';
+  if(l.includes('psa 9')||l.includes('mint')) return 'pill-psa9';
+  if(l.includes('psa 8')||l.includes('nm')) return 'pill-psa8';
+  if(l.includes('bgs')) return 'pill-bgs';
+  if(l.includes('cgc')) return 'pill-cgc';
   return 'pill-psa9';
 }
-
-function catClass(cat){
-  const c=(cat||'').toLowerCase();
-  if(c.includes('pokemon')||c.includes('pokémon')) return 'pill-poke';
-  if(c.includes('one piece')) return 'pill-op';
-  if(c.includes('magic')) return 'pill-mtg';
-  if(c.includes('rift')) return 'pill-rb';
+function catClass(c){
+  const l=(c||'').toLowerCase();
+  if(l.includes('pokemon')||l.includes('pokémon')) return 'pill-poke';
+  if(l.includes('one piece')) return 'pill-op';
+  if(l.includes('magic')) return 'pill-mtg';
+  if(l.includes('rift')) return 'pill-rb';
   return '';
 }
-
-function decClass(d){
-  if(d==='Send til grading') return 'pill-grade';
-  if(d==='Behold råt')       return 'pill-hold';
-  if(d==='Sælg')             return 'pill-sell';
-  return 'pill-undecided';
+function scoreColor(s){
+  if(s>=7) return 'high'; if(s>=4) return 'mid'; return 'low';
 }
 
-function getDecision(id){
-  const map = activeTab==='graded' ? gradedDecisions : sealedDecisions;
-  return map[id]||'Uafgjort';
-}
-function setDecision(id, d){
-  const map = activeTab==='graded' ? gradedDecisions : sealedDecisions;
-  map[id]=d;
-  saveAll();
+// ═══════════════════════════════════════════════════════
+// AI ANALYSIS
+// ═══════════════════════════════════════════════════════
+function buildPrompt(item){
+  const plVal = plAbs(item);
+  const pct   = plPct(item);
+  const mkt   = totV(item);
+  const cost  = totC(item);
+  const isGraded = item.grade && item.grade!=='Ungraded';
+
+  return `Du er en ekspert i samlekort-investering og markedsanalyse, specialiseret i Pokémon TCG, One Piece TCG og Magic: The Gathering.
+
+Analyser følgende samleobjekt og giv en struktureret investeringsanbefaling på DANSK:
+
+**PRODUKT:**
+- Navn: ${item.productName}
+- Kategori: ${item.category}
+- Sæt: ${item.set}
+${item.cardNumber?`- Kortnummer: ${item.cardNumber}`:''}
+${item.rarity?`- Raritet: ${item.rarity}`:''}
+${isGraded?`- Grade: ${item.grade}`:'- Type: Sealed produkt (uåbnet)'}
+${item.variance?`- Variant: ${item.variance}`:''}
+- Antal: ${item.quantity}
+
+**ØKONOMI:**
+- Kostpris: ${cost>0?fmtDKK(cost):'Ukendt'}
+- Nuværende markedspris: ${mkt>0?fmtDKK(mkt):'Ukendt'}
+- Gevinst/tab: ${cost>0?fmtDKK(plVal)+' ('+fmtP(pct)+')':'Ukendt'}
+
+**DIN ANALYSE SKAL INKLUDERE:**
+1. Nuværende pristrend (stigende/faldende/stabil) baseret på markedsdata
+2. ${isGraded?'Gradingskvalitet i forhold til markedspotentiale':'ROI-potentiale for sealed produkt over 1-3 år'}
+3. Efterspørgsel og popularitet i samlermiljøet lige nu
+4. Konkret anbefaling: SÆLG, BEHOLD eller SEND TIL GRADING (kun relevant for ugraded kort)
+
+**SVAR I PRÆCIST DETTE JSON-FORMAT (ingen anden tekst):**
+{
+  "recommendation": "Sælg" | "Behold råt" | "Send til grading",
+  "overall_score": <1-10 heltal>,
+  "dimensions": {
+    "price_trend": <1-10>,
+    "demand": <1-10>,
+    "roi_potential": <1-10>
+  },
+  "reasoning": "<2-3 sætninger på dansk med konkret begrundelse>",
+  "key_factor": "<den vigtigste enkeltfaktor for anbefalingen, maks 8 ord>"
+}`;
 }
 
-const DECISIONS=['Send til grading','Behold råt','Sælg','Uafgjort'];
-function cycleDecision(id){
-  const cur=getDecision(id);
-  const next=DECISIONS[(DECISIONS.indexOf(cur)+1)%DECISIONS.length];
-  setDecision(id,next);
+async function analyseItem(item){
+  if(!apiKey) return null;
+  const prompt = buildPrompt(item);
+  try {
+    const res = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{ role: 'user', content: prompt }],
+        temperature: 0.2,
+        max_tokens: 600,
+        search_recency_filter: 'month',
+        return_citations: true,
+      })
+    });
+    if(!res.ok){ console.warn('API error', res.status); return null; }
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content || '';
+    // Extract JSON from response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if(!jsonMatch) return null;
+    const parsed = JSON.parse(jsonMatch[0]);
+    parsed.timestamp = new Date().toISOString();
+    parsed.citations = data.citations || [];
+    return parsed;
+  } catch(e) {
+    console.error('Analysis error:', e);
+    return null;
+  }
+}
+
+async function runSingleAnalysis(itemId){
+  if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
+  const data  = activeTab==='graded' ? gradedData : sealedData;
+  const item  = data.find(i=>i.id===itemId);
+  if(!item) return;
+
+  // Update button to loading state
+  const btn = document.getElementById('abtn-'+itemId);
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">⟳</span> Analyserer...'; }
+
+  const result = await analyseItem(item);
+  if(result){
+    aiCache[itemId] = result;
+    saveAll();
+    expandedRow = itemId;
+    render();
+    showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
+  } else {
+    showToast('❌ Analyse fejlede — tjek din API-nøgle');
+    if(btn){ btn.disabled=false; btn.innerHTML='🤖 Analysér'; }
+  }
+}
+
+async function runBatchAnalysis(){
+  if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
+  if(batchRunning) return;
+  batchRunning = true;
+  document.getElementById('batchBtn').disabled=true;
+
+  const data = activeTab==='graded' ? gradedData : sealedData;
+  // Only items without cached analysis
+  const toAnalyse = data.filter(i=>!aiCache[i.id]);
+  if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; document.getElementById('batchBtn').disabled=false; return; }
+
+  let done=0;
+  const prog = document.getElementById('analyseProgress');
+  prog.innerHTML = `Analyserer <span>0</span>/${toAnalyse.length} poster...`;
+
+  for(const item of toAnalyse){
+    prog.innerHTML = `Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`;
+    const result = await analyseItem(item);
+    if(result){ aiCache[item.id]=result; saveAll(); }
+    done++;
+    // Small delay to avoid rate limiting
+    await new Promise(r=>setTimeout(r,800));
+  }
+
+  batchRunning=false;
+  document.getElementById('batchBtn').disabled=false;
+  prog.innerHTML=`<span style="color:var(--green);font-weight:700">✓ ${done} analyser fuldført</span>`;
   render();
+  showToast(`✅ Batch-analyse færdig: ${done} poster analyseret`);
 }
 
-// ── Categories ─────────────────────────────────────────────────────────────
-function getCategories(data){
-  const cats=['Alle',...new Set(data.map(d=>d.category).filter(Boolean))];
-  return cats;
-}
-
-// ── Render ─────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════
 function render(){
   const data = activeTab==='graded' ? gradedData : sealedData;
 
-  // Filter
-  let filtered = data.filter(item => {
+  let filtered = data.filter(item=>{
     const q=searchQ;
-    const matchSearch = !q ||
-      item.productName.toLowerCase().includes(q) ||
-      item.set.toLowerCase().includes(q) ||
-      (item.grade||'').toLowerCase().includes(q) ||
-      (item.category||'').toLowerCase().includes(q) ||
-      (item.rarity||'').toLowerCase().includes(q);
-    const matchCat = filterCat==='Alle' || item.category===filterCat;
-    return matchSearch && matchCat;
+    const ms = !q || item.productName.toLowerCase().includes(q) || item.set.toLowerCase().includes(q) || (item.grade||'').toLowerCase().includes(q) || (item.category||'').toLowerCase().includes(q) || (item.rarity||'').toLowerCase().includes(q);
+    const mc = filterCat==='Alle' || item.category===filterCat;
+    return ms && mc;
   });
 
-  // Sort
   filtered.sort((a,b)=>{
     let av,bv;
-    if(sortCol==='name')       { av=a.productName; bv=b.productName; }
-    else if(sortCol==='set')   { av=a.set; bv=b.set; }
-    else if(sortCol==='cost')  { av=costTotal(a); bv=costTotal(b); }
-    else if(sortCol==='value') { av=totalValue(a); bv=totalValue(b); }
-    else if(sortCol==='pl')    { av=pl(a); bv=pl(b); }
-    else if(sortCol==='date')  { av=a.dateAdded; bv=b.dateAdded; }
-    else if(sortCol==='qty')   { av=a.quantity; bv=b.quantity; }
-    else if(sortCol==='grade') { av=a.grade||''; bv=b.grade||''; }
-    else { av=a.productName; bv=b.productName; }
-    if(typeof av==='string') return sortAsc ? av.localeCompare(bv) : bv.localeCompare(av);
-    return sortAsc ? av-bv : bv-av;
+    if(sortCol==='name')  {av=a.productName;bv=b.productName;}
+    else if(sortCol==='set'){av=a.set;bv=b.set;}
+    else if(sortCol==='cost'){av=totC(a);bv=totC(b);}
+    else if(sortCol==='value'){av=totV(a);bv=totV(b);}
+    else if(sortCol==='pl'){av=plAbs(a);bv=plAbs(b);}
+    else if(sortCol==='date'){av=a.dateAdded;bv=b.dateAdded;}
+    else if(sortCol==='qty'){av=a.quantity;bv=b.quantity;}
+    else if(sortCol==='score'){av=aiCache[a.id]?.overall_score||0;bv=aiCache[b.id]?.overall_score||0;}
+    else {av=a.productName;bv=b.productName;}
+    if(typeof av==='string') return sortAsc?av.localeCompare(bv):bv.localeCompare(av);
+    return sortAsc?av-bv:bv-av;
   });
 
   renderSummary(data, filtered);
@@ -514,286 +665,270 @@ function render(){
 }
 
 function renderSummary(data, filtered){
-  const totalCost  = data.reduce((s,i)=>s+costTotal(i),0);
-  const totalMkt   = data.reduce((s,i)=>s+totalValue(i),0);
-  const totalPL    = totalMkt-totalCost;
-  const pct        = totalCost>0 ? (totalPL/totalCost*100) : 0;
-  const count      = data.reduce((s,i)=>s+i.quantity,0);
+  const tc=data.reduce((s,i)=>s+totC(i),0);
+  const tv=data.reduce((s,i)=>s+totV(i),0);
+  const tp=tv-tc;
+  const pct=tc>0?(tp/tc*100):0;
+  const cnt=data.reduce((s,i)=>s+i.quantity,0);
+  const analysed=data.filter(i=>aiCache[i.id]).length;
+  const plClass=tp>=0?'green':'red';
+  const pctStr=(pct>=0?'+':'')+pct.toFixed(1)+'%';
 
-  const plClass = totalPL>=0?'green':'red';
-  const pctStr  = (pct>=0?'+':'')+pct.toFixed(1)+'%';
-
-  document.getElementById('summaryBar').innerHTML =
-    `<div class="stat"><span class="stat-label">Poster:</span><span class="stat-val">${data.length} (${count} stk)</span></div>` +
-    `<div class="summary-divider"></div>` +
-    `<div class="stat"><span class="stat-label">Kostpris:</span><span class="stat-val">${fmtDKK(totalCost)}</span></div>` +
-    `<div class="summary-divider"></div>` +
-    `<div class="stat"><span class="stat-label">Markedsværdi:</span><span class="stat-val gold">${fmtDKK(totalMkt)}</span></div>` +
-    `<div class="summary-divider"></div>` +
-    `<div class="stat"><span class="stat-label">Gevinst/tab:</span><span class="stat-val ${plClass}">${fmtDKK(totalPL)} (${pctStr})</span></div>` +
-    (filtered.length!==data.length ? `<div class="summary-divider"></div><div class="stat"><span class="stat-label">Vist:</span><span class="stat-val">${filtered.length} poster</span></div>` : '');
+  document.getElementById('summaryBar').innerHTML=
+    `<div class="stat"><span class="stat-lbl">Poster:</span><span class="stat-val">${data.length} (${cnt} stk)</span></div>`+
+    `<div class="sdiv"></div>`+
+    `<div class="stat"><span class="stat-lbl">Kostpris:</span><span class="stat-val">${fmtDKK(tc)}</span></div>`+
+    `<div class="sdiv"></div>`+
+    `<div class="stat"><span class="stat-lbl">Markedsværdi:</span><span class="stat-val gold">${fmtDKK(tv)}</span></div>`+
+    `<div class="sdiv"></div>`+
+    `<div class="stat"><span class="stat-lbl">P/L:</span><span class="stat-val ${plClass}">${fmtDKK(tp)} (${pctStr})</span></div>`+
+    (analysed>0?`<div class="sdiv"></div><div class="stat"><span class="stat-lbl">AI-analyseret:</span><span class="stat-val blue">${analysed}/${data.length}</span></div>`:'');
 }
 
 function renderToolbar(data){
-  const cats = getCategories(data);
-  const catChips = cats.map(c =>
-    `<button class="chip${filterCat===c?' active':''}" onclick="setFilterCat('${c.replace(/'/g,"\\'")}')">${c}</button>`
-  ).join('');
-
-  const sortOpts = activeTab==='graded'
-    ? `<option value="name">Navn</option><option value="set">Sæt</option><option value="grade">Grade</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
-    : `<option value="name">Navn</option><option value="set">Sæt</option><option value="qty">Antal</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`;
-
-  document.getElementById('toolbar').innerHTML =
-    catChips +
-    `<div class="toolbar-sep"></div>` +
-    `<select class="sort-select" onchange="setSort(this.value)" id="sortSel">
-      <svg width="10" height="10"/>${sortOpts}
-    </select>`;
-
-  document.getElementById('sortSel').value = sortCol;
+  const cats=['Alle',...new Set(data.map(d=>d.category).filter(Boolean))];
+  const chips=cats.map(c=>`<button class="chip${filterCat===c?' active':''}" onclick="setFilterCat('${esc(c)}')">${esc(c)}</button>`).join('');
+  const sortOpts=activeTab==='graded'
+    ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
+    :`<option value="name">Navn</option><option value="set">Sæt</option><option value="qty">Antal</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option>`;
+  document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select>`;
+  document.getElementById('sortSel').value=sortCol;
 }
 
-function setFilterCat(cat){ filterCat=cat; render(); }
-function setSort(col){ if(sortCol===col){sortAsc=!sortAsc;}else{sortCol=col;sortAsc=true;} render(); }
+function setFilterCat(c){ filterCat=c; render(); }
+function setSort(c){ sortCol===c?sortAsc=!sortAsc:(sortCol=c,sortAsc=true); render(); }
+function thA(c){ const s=sortCol===c; return `<span class="s-arr">${s?(sortAsc?'↑':'↓'):'↕'}</span>`; }
 
-function thArrow(col){
-  if(sortCol!==col) return `<span class="sort-arrow">↕</span>`;
-  return `<span class="sort-arrow">${sortAsc?'↑':'↓'}</span>`;
+function renderAICell(item){
+  const ai=aiCache[item.id];
+  const hasKey=!!apiKey;
+  if(!ai){
+    if(!hasKey) return `<td class="ai-cell"><span class="score-badge score-na">Ingen API-nøgle</span></td>`;
+    return `<td class="ai-cell"><button class="btn-analyse" id="abtn-${item.id}" onclick="runSingleAnalysis('${item.id}')">🤖 Analysér</button></td>`;
+  }
+  const rec=ai.recommendation||'Uafgjort';
+  const score=ai.overall_score||0;
+  const cls=rec==='Sælg'?'score-sell':rec==='Send til grading'?'score-grade':'score-hold';
+  const expanded=expandedRow===item.id;
+  return `<td class="ai-cell">
+    <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
+      <button class="score-badge ${cls}" onclick="toggleDetail('${item.id}')" title="${esc(ai.key_factor||'')}">
+        ${score}/10 · ${esc(rec)}${expanded?' ▲':' ▼'}
+      </button>
+      <button class="btn-analyse" id="abtn-${item.id}" onclick="runSingleAnalysis('${item.id}')" title="Genanalysér">↺</button>
+    </div>
+  </td>`;
+}
+
+function toggleDetail(id){
+  expandedRow = expandedRow===id ? null : id;
+  render();
+}
+
+function renderAIDetailRow(item, colSpan){
+  const ai=aiCache[item.id];
+  if(!ai||expandedRow!==item.id) return '';
+  const rec=ai.recommendation||'';
+  const recCls=rec==='Sælg'?'ai-rec-sell':rec==='Send til grading'?'ai-rec-grade':'ai-rec-hold';
+  const dims=ai.dimensions||{};
+  const dimKeys={price_trend:'Pristrend',demand:'Efterspørgsel',roi_potential:'ROI-potentiale'};
+  const dimsHtml=Object.entries(dimKeys).map(([k,label])=>{
+    const v=dims[k]||0;
+    const cls=scoreColor(v);
+    return `<div class="score-dim"><div class="score-dim-label">${label}</div><div class="score-dim-val ${cls}">${v}/10</div></div>`;
+  }).join('');
+  const ts=ai.timestamp?new Date(ai.timestamp).toLocaleString('da-DK'):'';
+  const citations=(ai.citations||[]).slice(0,3);
+  return `<tr class="ai-detail-row"><td colspan="${colSpan}">
+    <div class="ai-detail-inner">
+      <div class="ai-detail-header">
+        <span class="ai-detail-title">🤖 AI-analyse · ${esc(item.productName)}</span>
+        <button class="ai-detail-close" onclick="toggleDetail('${item.id}')">✕ Luk</button>
+      </div>
+      <div><span class="ai-rec-chip ${recCls}">${rec==='Sælg'?'📤':'rec'==='Send til grading'?'🏅':'📦'} ${esc(rec)}</span></div>
+      <div class="ai-scores-row">${dimsHtml}</div>
+      <div class="ai-reasoning">${esc(ai.reasoning||'')}</div>
+      ${ai.key_factor?`<div style="margin-top:.4rem;font-size:.75rem;font-weight:700;color:var(--muted)">Nøglefaktor: <span style="color:var(--text)">${esc(ai.key_factor)}</span></div>`:''}
+      ${citations.length?`<div class="ai-sources">Kilder: ${citations.map(c=>`<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`).join(' · ')}</div>`:''}
+      ${ts?`<div class="ai-timestamp">Analyseret: ${ts}</div>`:''}
+    </div>
+  </td></tr>`;
 }
 
 function renderTable(filtered){
-  const container = document.getElementById('tableContainer');
-
+  const container=document.getElementById('tableContainer');
   if(filtered.length===0){
-    const isEmpty = (activeTab==='graded' ? gradedData : sealedData).length===0;
-    container.innerHTML=`
-      <div class="empty-state">
-        <svg width="56" height="56" viewBox="0 0 64 64" fill="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="11" fill="var(--bg)"/><path d="M4 32h56" stroke="var(--bg)" stroke-width="4"/><circle cx="32" cy="32" r="6"/></svg>
-        <p class="empty-title">${isEmpty?'Ingen data endnu':'Ingen resultater'}</p>
-        <p style="font-size:.82rem;color:var(--muted)">${isEmpty?'Upload en CSV-fil for at komme i gang':'Prøv at ændre søgning eller filtre'}</p>
-        ${isEmpty?`<label class="btn-primary" style="cursor:pointer;margin-top:.5rem">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Upload CSV
-          <input type="file" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
-        </label>`:''}
-      </div>`;
+    const empty=(activeTab==='graded'?gradedData:sealedData).length===0;
+    container.innerHTML=`<div class="empty-state">
+      <svg width="56" height="56" viewBox="0 0 64 64" fill="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="11" fill="var(--bg)"/><path d="M4 32h56" stroke="var(--bg)" stroke-width="4"/><circle cx="32" cy="32" r="6"/></svg>
+      <p class="empty-title">${empty?'Ingen data endnu':'Ingen resultater'}</p>
+      <p style="font-size:.82rem">${empty?'Upload en CSV-fil for at starte':'Ryd filtre eller søgning'}</p>
+      ${empty?`<label class="btn-primary" style="cursor:pointer;margin-top:.5rem">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload CSV<input type="file" accept=".csv" multiple style="display:none" onchange="handleCSV(this)"/>
+      </label>`:''}
+    </div>`;
     return;
   }
 
   if(activeTab==='graded'){
-    container.innerHTML=`<table>
-      <thead><tr>
-        <th onclick="setSort('name')" class="${sortCol==='name'?'sorted':''}">Navn${thArrow('name')}</th>
-        <th onclick="setSort('set')" class="${sortCol==='set'?'sorted':''} hide-mobile">Sæt${thArrow('set')}</th>
-        <th class="hide-mobile">Nr.</th>
-        <th class="hide-mobile">Raritet</th>
-        <th onclick="setSort('grade')" class="${sortCol==='grade'?'sorted':''}">Grade${thArrow('grade')}</th>
-        <th class="hide-mobile">Kategori</th>
-        <th onclick="setSort('cost')" class="${sortCol==='cost'?'sorted':''}">Kostpris${thArrow('cost')}</th>
-        <th onclick="setSort('value')" class="${sortCol==='value'?'sorted':''}">Markedspris${thArrow('value')}</th>
-        <th onclick="setSort('pl')" class="${sortCol==='pl'?'sorted':''}">P/L${thArrow('pl')}</th>
-        <th>Beslutning</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${filtered.map(item => {
-          const dec = getDecision(item.id);
-          const plVal = pl(item);
-          const pct = plPct(item);
-          const plClass = plVal>=0?'green':'red';
-          const cost = costTotal(item);
-          const mkt  = totalValue(item);
-          return `<tr>
-            <td><div class="name-cell" title="${esc(item.productName)}">${esc(item.productName)}</div></td>
-            <td class="hide-mobile"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
-            <td class="muted hide-mobile">${esc(item.cardNumber)}</td>
-            <td class="muted hide-mobile" style="font-size:.72rem">${esc(item.rarity)}</td>
-            <td>${item.grade&&item.grade!=='Ungraded'?`<span class="pill ${gradeClass(item.grade)}">${esc(item.grade)}</span>`:'<span class="muted">—</span>'}</td>
-            <td class="hide-mobile">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
-            <td class="num">${cost>0?fmtDKK(cost):'—'}</td>
-            <td class="num gold">${mkt>0?fmtDKK(mkt):'—'}</td>
-            <td class="num ${plClass}">${cost>0?fmtDKK(plVal):'—'}<br><span style="font-size:.68rem;font-weight:400">${cost>0?fmtPct(pct):''}</span></td>
-            <td>
-              <button class="decision-btn" onclick="cycleDecision('${item.id}')" title="Klik for at skifte">
-                <span class="pill ${decClass(dec)}">${esc(dec)}</span>
-              </button>
-            </td>
-            <td style="display:flex;gap:.2rem;align-items:center">
-              <button class="btn-del" onclick="deleteItem('${item.id}')" title="Slet">🗑</button>
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
+    const COLS=11;
+    const rows=filtered.map(item=>{
+      const pl=plAbs(item), pct=plPct(item), plC=pl>=0?'green':'red';
+      return `<tr>
+        <td><div class="name-cell" title="${esc(item.productName)}">${esc(item.productName)}</div></td>
+        <td class="hide-mob"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
+        <td class="muted hide-mob" style="font-size:.72rem">${esc(item.cardNumber)}</td>
+        <td class="muted hide-mob" style="font-size:.72rem">${esc(item.rarity)}</td>
+        <td>${item.grade&&item.grade!=='Ungraded'?`<span class="pill ${gradeClass(item.grade)}">${esc(item.grade)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+        <td class="hide-mob">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
+        <td class="num">${totC(item)>0?fmtDKK(totC(item)):'—'}</td>
+        <td class="num gold">${totV(item)>0?fmtDKK(totV(item)):'—'}</td>
+        <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
+        ${renderAICell(item)}
+        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+      </tr>`+renderAIDetailRow(item,COLS);
+    }).join('');
+    container.innerHTML=`<table><thead><tr>
+      <th onclick="setSort('name')" class="${sortCol==='name'?'sorted':''}">Navn${thA('name')}</th>
+      <th onclick="setSort('set')" class="${sortCol==='set'?'sorted':''} hide-mob">Sæt${thA('set')}</th>
+      <th class="hide-mob">Nr.</th><th class="hide-mob">Raritet</th>
+      <th onclick="setSort('grade')" class="${sortCol==='grade'?'sorted':''}">Grade${thA('grade')}</th>
+      <th class="hide-mob">Kategori</th>
+      <th onclick="setSort('cost')" class="${sortCol==='cost'?'sorted':''}">Kostpris${thA('cost')}</th>
+      <th onclick="setSort('value')" class="${sortCol==='value'?'sorted':''}">Markedspris${thA('value')}</th>
+      <th onclick="setSort('pl')" class="${sortCol==='pl'?'sorted':''}">P/L${thA('pl')}</th>
+      <th onclick="setSort('score')" class="${sortCol==='score'?'sorted':''}">🤖 AI-analyse${thA('score')}</th>
+      <th></th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
   } else {
-    container.innerHTML=`<table>
-      <thead><tr>
-        <th onclick="setSort('name')" class="${sortCol==='name'?'sorted':''}">Produkt${thArrow('name')}</th>
-        <th onclick="setSort('set')" class="${sortCol==='set'?'sorted':''} hide-mobile">Sæt${thArrow('set')}</th>
-        <th class="hide-mobile">Kategori</th>
-        <th onclick="setSort('qty')" class="${sortCol==='qty'?'sorted':''}">Antal${thArrow('qty')}</th>
-        <th onclick="setSort('cost')" class="${sortCol==='cost'?'sorted':''}">Kostpris/stk${thArrow('cost')}</th>
-        <th onclick="setSort('value')" class="${sortCol==='value'?'sorted':''}">Markedspris/stk${thArrow('value')}</th>
-        <th onclick="setSort('pl')" class="${sortCol==='pl'?'sorted':''}">P/L total${thArrow('pl')}</th>
-        <th onclick="setSort('date')" class="${sortCol==='date'?'sorted':''} hide-mobile">Dato${thArrow('date')}</th>
-        <th>Beslutning</th>
-        <th></th>
-      </tr></thead>
-      <tbody>
-        ${filtered.map(item => {
-          const dec    = getDecision(item.id);
-          const plVal  = pl(item);
-          const pct    = plPct(item);
-          const plClass= plVal>=0?'green':'red';
-          const mkt    = totalValue(item);
-          return `<tr>
-            <td><div class="name-cell" title="${esc(item.productName)}">${esc(item.productName)}</div></td>
-            <td class="hide-mobile"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
-            <td class="hide-mobile">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
-            <td class="num">${item.quantity}</td>
-            <td class="num">${item.costPaid>0?fmtDKK(item.costPaid):'—'}</td>
-            <td class="num gold">${mkt>0?fmtDKK(item.marketPrice):'—'}</td>
-            <td class="num ${plClass}">${item.costPaid>0?fmtDKK(plVal):'—'}<br><span style="font-size:.68rem;font-weight:400">${item.costPaid>0?fmtPct(pct):''}</span></td>
-            <td class="muted hide-mobile" style="font-size:.75rem">${item.dateAdded||'—'}</td>
-            <td>
-              <button class="decision-btn" onclick="cycleDecision('${item.id}')" title="Klik for at skifte">
-                <span class="pill ${decClass(dec)}">${esc(dec)}</span>
-              </button>
-            </td>
-            <td style="display:flex;gap:.2rem;align-items:center">
-              <button class="btn-del" onclick="deleteItem('${item.id}')" title="Slet">🗑</button>
-            </td>
-          </tr>`;
-        }).join('')}
-      </tbody>
-    </table>`;
+    const COLS=10;
+    const rows=filtered.map(item=>{
+      const pl=plAbs(item),pct=plPct(item),plC=pl>=0?'green':'red';
+      return `<tr>
+        <td><div class="name-cell" title="${esc(item.productName)}">${esc(item.productName)}</div></td>
+        <td class="hide-mob"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
+        <td class="hide-mob">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
+        <td class="num">${item.quantity}</td>
+        <td class="num">${item.costPaid>0?fmtDKK(item.costPaid):'—'}</td>
+        <td class="num gold">${totV(item)>0?fmtDKK(item.marketPrice):'—'}</td>
+        <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
+        <td class="muted hide-mob" style="font-size:.75rem">${item.dateAdded||'—'}</td>
+        ${renderAICell(item)}
+        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+      </tr>`+renderAIDetailRow(item,COLS);
+    }).join('');
+    container.innerHTML=`<table><thead><tr>
+      <th onclick="setSort('name')" class="${sortCol==='name'?'sorted':''}">Produkt${thA('name')}</th>
+      <th onclick="setSort('set')" class="${sortCol==='set'?'sorted':''} hide-mob">Sæt${thA('set')}</th>
+      <th class="hide-mob">Kategori</th>
+      <th onclick="setSort('qty')" class="${sortCol==='qty'?'sorted':''}">Antal${thA('qty')}</th>
+      <th onclick="setSort('cost')" class="${sortCol==='cost'?'sorted':''}">Kostpris/stk${thA('cost')}</th>
+      <th onclick="setSort('value')" class="${sortCol==='value'?'sorted':''}">Markedspris/stk${thA('value')}</th>
+      <th onclick="setSort('pl')" class="${sortCol==='pl'?'sorted':''}">P/L${thA('pl')}</th>
+      <th class="hide-mob">Dato</th>
+      <th onclick="setSort('score')" class="${sortCol==='score'?'sorted':''}">🤖 AI-analyse${thA('score')}</th>
+      <th></th>
+    </tr></thead><tbody>${rows}</tbody></table>`;
   }
 }
 
-// ── Delete ─────────────────────────────────────────────────────────────────
-function deleteItem(id){
-  if(!confirm('Slet denne post?')) return;
-  if(activeTab==='graded') gradedData = gradedData.filter(i=>i.id!==id);
-  else sealedData = sealedData.filter(i=>i.id!==id);
-  saveAll(); render();
-}
-
-// ── Add modal ──────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// ADD MODAL
+// ═══════════════════════════════════════════════════════
 function openAddModal(){
-  editIdx=null; formDec='Uafgjort';
-  document.getElementById('modalTitle').textContent = activeTab==='graded' ? 'Tilføj grader kort' : 'Tilføj sealed produkt';
-  document.getElementById('modalBody').innerHTML = buildForm(null);
-  document.getElementById('modalBackdrop').classList.add('open');
-  setTimeout(()=>document.getElementById('mName').focus(),50);
-}
-
-function buildForm(item){
-  const isGraded = activeTab==='graded';
-  return `
-    <div class="fg"><label>Produktnavn *</label><input id="mName" value="${esc(item?.productName||'')}"/></div>
+  document.getElementById('modalTitle').textContent=activeTab==='graded'?'Tilføj grader kort':'Tilføj sealed produkt';
+  document.getElementById('modalBody').innerHTML=`
+    <div class="fg"><label>Produktnavn *</label><input id="mName"/></div>
     <div class="fg-row">
-      <div class="fg"><label>Sæt</label><input id="mSet" value="${esc(item?.set||'')}"/></div>
-      <div class="fg"><label>Kategori</label>
-        <select id="mCat">
-          <option>Pokemon</option><option>One Piece</option><option>Magic: The Gathering</option><option>Riftbound</option>
-        </select>
-      </div>
+      <div class="fg"><label>Sæt</label><input id="mSet"/></div>
+      <div class="fg"><label>Kategori</label><select id="mCat"><option>Pokemon</option><option>One Piece</option><option>Magic: The Gathering</option><option>Riftbound</option></select></div>
     </div>
-    ${isGraded ? `
+    ${activeTab==='graded'?`
     <div class="fg-row">
-      <div class="fg"><label>Kortnummer</label><input id="mNum" value="${esc(item?.cardNumber||'')}"/></div>
-      <div class="fg"><label>Raritet</label><input id="mRarity" value="${esc(item?.rarity||'')}"/></div>
+      <div class="fg"><label>Kortnummer</label><input id="mNum"/></div>
+      <div class="fg"><label>Raritet</label><input id="mRarity"/></div>
     </div>
-    <div class="fg"><label>Grade</label>
-      <select id="mGrade">
-        <option value="">Ungraded</option>
-        <option>PSA 10.0 GEM - MT</option><option>PSA 9.0 MINT</option><option>PSA 8.0 NM - MT</option>
-        <option>BGS 10.0 Black Label</option><option>BGS 9.5 Gem Mint</option><option>BGS 9.0 Mint</option><option>BGS 8.5 NM-MT+</option>
-        <option>CGC 10.0 Pristine</option><option>CGC 9.5 Mint+</option><option>CGC 9.0 Mint</option>
-      </select>
-    </div>` : `
+    <div class="fg"><label>Grade</label><select id="mGrade">
+      <option value="">Ungraded</option>
+      <option>PSA 10.0 GEM - MT</option><option>PSA 9.0 MINT</option><option>PSA 8.0 NM - MT</option>
+      <option>BGS 10.0 Black Label</option><option>BGS 9.5 Gem Mint</option><option>BGS 9.0 Mint</option><option>BGS 8.5 NM-MT+</option>
+      <option>CGC 10.0 Pristine</option><option>CGC 9.5 Mint+</option><option>CGC 9.0 Mint</option>
+    </select></div>`:`
     <div class="fg-row">
-      <div class="fg"><label>Antal</label><input id="mQty" type="number" min="1" value="${item?.quantity||1}"/></div>
-      <div class="fg"><label>Stand</label>
-        <select id="mCond"><option>Near Mint</option><option>Light Play</option><option>Moderate Play</option></select>
-      </div>
+      <div class="fg"><label>Antal</label><input id="mQty" type="number" min="1" value="1"/></div>
+      <div class="fg"><label>Stand</label><select id="mCond"><option>Near Mint</option><option>Light Play</option></select></div>
     </div>`}
     <div class="fg-row">
-      <div class="fg"><label>Kostpris (DKK)</label><input id="mCost" type="number" min="0" step="0.01" value="${item?.costPaid||''}"/></div>
-      <div class="fg"><label>Markedspris (DKK)</label><input id="mMkt" type="number" min="0" step="0.01" value="${item?.marketPrice||''}"/></div>
+      <div class="fg"><label>Kostpris (DKK)</label><input id="mCost" type="number" min="0" step="0.01"/></div>
+      <div class="fg"><label>Markedspris (DKK)</label><input id="mMkt" type="number" min="0" step="0.01"/></div>
     </div>
-    <div class="fg"><label>Dato tilføjet</label><input id="mDate" type="date" value="${item?.dateAdded||''}"/></div>
-    <div class="fg"><label>Beslutning</label>
-      <div class="dec-grid">
-        ${['Send til grading','Behold råt','Sælg','Uafgjort'].map(d=>`
-          <button type="button" class="dec-opt${formDec===d?' sel-'+d.toLowerCase().split(' ').join('-').replace('å','aa').replace('æ','ae').replace('ø','oe'):''}" data-dec="${d}" onclick="selDec('${d}')">${d}</button>`).join('')}
-      </div>
-    </div>
-    <div class="fg"><label>Noter</label><textarea id="mNotes">${esc(item?.notes||'')}</textarea></div>
+    <div class="fg"><label>Dato tilføjet</label><input id="mDate" type="date"/></div>
+    <div class="fg"><label>Noter</label><textarea id="mNotes"></textarea></div>
     <div class="form-actions">
       <button class="btn-sub" onclick="submitForm()">Gem</button>
       <button class="btn-can" onclick="closeModal()">Annullér</button>
     </div>`;
+  document.getElementById('modalBackdrop').classList.add('open');
+  setTimeout(()=>document.getElementById('mName').focus(),50);
 }
-
-function selDec(d){
-  formDec=d;
-  document.querySelectorAll('.dec-opt').forEach(b=>{
-    b.className='dec-opt';
-    if(b.dataset.dec===d){
-      const cls = d==='Send til grading'?'sel-grade':d==='Behold råt'?'sel-hold':d==='Sælg'?'sel-sell':'sel-undecided';
-      b.classList.add(cls);
-    }
-  });
-}
-
 function submitForm(){
-  const name = document.getElementById('mName')?.value.trim();
-  if(!name){ alert('Udfyld venligst produktnavn.'); return; }
-  const isGraded = activeTab==='graded';
-  const item = {
-    id: Math.random().toString(36).slice(2),
-    productName: name,
-    set:      document.getElementById('mSet')?.value.trim()||'',
-    category: document.getElementById('mCat')?.value||'Pokemon',
-    cardNumber: document.getElementById('mNum')?.value.trim()||'',
-    rarity:   document.getElementById('mRarity')?.value.trim()||'',
-    grade:    document.getElementById('mGrade')?.value||'',
+  const name=document.getElementById('mName')?.value.trim();
+  if(!name){alert('Udfyld venligst produktnavn.');return;}
+  const item={
+    id:Math.random().toString(36).slice(2)+Date.now().toString(36),
+    productName:name,
+    set:document.getElementById('mSet')?.value.trim()||'',
+    category:document.getElementById('mCat')?.value||'Pokemon',
+    cardNumber:document.getElementById('mNum')?.value.trim()||'',
+    rarity:document.getElementById('mRarity')?.value.trim()||'',
+    grade:document.getElementById('mGrade')?.value||'',
     condition:document.getElementById('mCond')?.value||'Near Mint',
-    quantity: parseInt(document.getElementById('mQty')?.value)||1,
-    costPaid: parseFloat(document.getElementById('mCost')?.value)||0,
-    marketPrice: parseFloat(document.getElementById('mMkt')?.value)||0,
-    priceOverride: 0,
-    watchlist: false,
-    dateAdded: document.getElementById('mDate')?.value||'',
-    notes:    document.getElementById('mNotes')?.value.trim()||'',
-    portfolioName: isGraded ? 'Graded portfolio' : 'Sealed portfolio',
-    variance: '',
+    quantity:parseInt(document.getElementById('mQty')?.value)||1,
+    costPaid:parseFloat(document.getElementById('mCost')?.value)||0,
+    marketPrice:parseFloat(document.getElementById('mMkt')?.value)||0,
+    priceOverride:0,watchlist:false,
+    dateAdded:document.getElementById('mDate')?.value||'',
+    notes:document.getElementById('mNotes')?.value.trim()||'',
+    portfolioName:activeTab==='graded'?'Graded portfolio':'Sealed portfolio',
+    variance:'',
   };
-  if(isGraded) gradedData.push(item);
+  if(activeTab==='graded') gradedData.push(item);
   else sealedData.push(item);
-  setDecision(item.id, formDec);
   saveAll(); closeModal(); render();
   showToast('✅ Tilføjet: '+name);
 }
-
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
 
-// ── Toast ──────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// DELETE
+// ═══════════════════════════════════════════════════════
+function deleteItem(id){
+  if(!confirm('Slet denne post?')) return;
+  if(activeTab==='graded') gradedData=gradedData.filter(i=>i.id!==id);
+  else sealedData=sealedData.filter(i=>i.id!==id);
+  delete aiCache[id];
+  saveAll(); render();
+}
+
+// ═══════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),3000);
+  setTimeout(()=>t.classList.remove('show'),3500);
 }
 
-// ── Escape HTML ────────────────────────────────────────────────────────────
-function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-
-// ── Keyboard ───────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// KEYBOARD
+// ═══════════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
-// ── Init ───────────────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════
+initApiKey();
 render();
 </script>
 </body>
