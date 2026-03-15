@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="da" data-theme="dark">
+<head>
+<!--
+   ______                            __
+  / ____/___  ____ ___  ____  __  __/ /____  _____
+ / /   / __ \/ __ `__ \/ __ \/ / / / __/ _ \/ ___/
+/ /___/ /_/ / / / / / / /_/ / /_/ / /_/  __/ /
+\____/\____/_/ /_/ /_/ .___/\__,_/\__/\___/_/
+                    /_/
+        Created with Perplexity Computer
+        https://www.perplexity.ai/computer
+-->
+<meta name="generator" content="Perplexity Computer">
+<meta name="author" content="Perplexity Computer">
+<meta property="og:see_also" content="https://www.perplexity.ai/computer">
+<link rel="author" href="https://www.perplexity.ai/computer">
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="robots" content="noindex, nofollow"/>
+<title>Pokémon Samling</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><circle cx='16' cy='16' r='14' fill='%23d4ac0d'/><circle cx='16' cy='16' r='6' fill='%23111'/><path d='M2 16h28' stroke='%23111' stroke-width='2.5'/></svg>"/>
+<link href="https://api.fontshare.com/v2/css?f[]=satoshi@400,500,600,700&display=swap" rel="stylesheet">
+<style>
+/* ── Reset & tokens ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f7f6f2;--surface:#fff;--surface2:#f3f0ec;
+  --border:#dcd9d5;--text:#28251d;--muted:#7a7974;--faint:#bab9b4;
+  --primary:#c49a00;--primary-fg:#1a1500;
+  --gold:#c49a00;--red:#c0392b;--teal:#0e7490;--green:#437a22;
+  --radius:0.75rem;--radius-sm:0.4rem;
+  --shadow:0 2px 12px rgba(0,0,0,.08);
+  --trans:180ms cubic-bezier(.16,1,.3,1);
+}
+[data-theme="dark"]{
+  --bg:#0f1117;--surface:#161b27;--surface2:#1c2235;
+  --border:#252d42;--text:#e8eaf0;--muted:#7a8299;--faint:#3d4460;
+  --primary:#f0c030;--primary-fg:#1a1500;
+  --gold:#f0c030;--red:#e05252;--teal:#38bdf8;--green:#6daa45;
+  --shadow:0 2px 16px rgba(0,0,0,.35);
+}
+html{-webkit-font-smoothing:antialiased;scroll-behavior:smooth}
+body{font-family:'Satoshi',system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100dvh;font-size:1rem;line-height:1.5}
+img{display:block;max-width:100%;height:auto}
+button{cursor:pointer;border:none;background:none;font:inherit;color:inherit}
+input,select,textarea{font:inherit;color:inherit}
+
+/* ── Layout ── */
+.container{max-width:1200px;margin:0 auto;padding:0 1rem}
+
+/* ── Header ── */
+header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);backdrop-filter:blur(8px)}
+.header-inner{display:flex;align-items:center;gap:.75rem;height:3.5rem}
+.logo{display:flex;align-items:center;gap:.5rem;font-weight:700;font-size:.95rem;flex-shrink:0;text-decoration:none;color:var(--text)}
+.logo svg{flex-shrink:0}
+.search-wrap{flex:1;position:relative}
+.search-wrap input{width:100%;height:2.25rem;padding:.25rem .75rem .25rem 2.25rem;border-radius:var(--radius);background:var(--surface2);border:1px solid var(--border);outline:none;font-size:.9rem;transition:border-color var(--trans)}
+.search-wrap input:focus{border-color:var(--primary)}
+.search-wrap .ico-search{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--muted);pointer-events:none}
+.search-clear{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);color:var(--muted);padding:.2rem;border-radius:50%;display:none}
+.search-clear.show{display:flex}
+.btn-icon{width:2.25rem;height:2.25rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-sm);color:var(--muted);transition:background var(--trans),color var(--trans)}
+.btn-icon:hover{background:var(--surface2);color:var(--text)}
+.btn-primary{display:inline-flex;align-items:center;gap:.4rem;padding:.45rem 1rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-fg);font-weight:600;font-size:.875rem;transition:opacity var(--trans);white-space:nowrap;flex-shrink:0}
+.btn-primary:hover{opacity:.88}
+.btn-label{display:none}
+@media(min-width:540px){.btn-label{display:inline}}
+
+/* ── Filter bar ── */
+.filter-bar{border-top:1px solid var(--border);padding:.6rem 0;display:none}
+.filter-bar.open{display:block}
+.filter-inner{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.filter-label{font-size:.75rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.chip{padding:.25rem .75rem;border-radius:999px;font-size:.78rem;font-weight:500;background:var(--surface2);color:var(--muted);border:1.5px solid transparent;transition:all var(--trans);cursor:pointer}
+.chip:hover{border-color:var(--border);color:var(--text)}
+.chip.active{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
+.chip-wish.active{background:#f59e0b22;color:#f59e0b;border-color:#f59e0b88}
+.divider{width:1px;height:1.2rem;background:var(--border)}
+
+/* ── Stats ── */
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem;margin:1.25rem 0}
+@media(min-width:640px){.stats{grid-template-columns:repeat(4,1fr)}}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem 1rem;display:flex;align-items:center;gap:.75rem}
+.stat-icon{width:2rem;height:2rem;border-radius:.5rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:color-mix(in srgb,var(--primary) 15%,transparent)}
+.stat-icon svg{color:var(--primary)}
+.stat-label{font-size:.72rem;color:var(--muted);margin-bottom:.1rem}
+.stat-value{font-size:.9rem;font-weight:700;line-height:1.2}
+
+/* ── Result count ── */
+.result-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem}
+.result-count{font-size:.82rem;color:var(--muted)}
+.clear-link{font-size:.78rem;color:var(--primary);cursor:pointer;background:none;border:none}
+
+/* ── Card grid ── */
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:.75rem}
+@media(min-width:540px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:768px){.grid{grid-template-columns:repeat(4,1fr)}}
+@media(min-width:1024px){.grid{grid-template-columns:repeat(5,1fr)}}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;transition:transform var(--trans),box-shadow var(--trans)}
+.card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+.card-img{position:relative;aspect-ratio:3/4;overflow:hidden;background:var(--surface2)}
+.card-img img{width:100%;height:100%;object-fit:cover}
+.card-placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--faint)}
+.badge-cond{position:absolute;top:.4rem;left:.4rem;padding:.2rem .4rem;border-radius:.3rem;font-size:.68rem;font-weight:700}
+.btn-wish{position:absolute;top:.35rem;right:.35rem;width:1.75rem;height:1.75rem;border-radius:50%;background:rgba(0,0,0,.35);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;transition:background var(--trans)}
+.btn-wish:hover{background:rgba(0,0,0,.55)}
+.btn-wish svg{width:1rem;height:1rem}
+.card-body{padding:.6rem .7rem .7rem}
+.card-name{font-weight:600;font-size:.875rem;line-height:1.3;margin-bottom:.15rem}
+.card-set{font-size:.72rem;color:var(--muted);margin-bottom:.45rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tag-row{display:flex;flex-wrap:wrap;gap:.25rem;margin-bottom:.45rem}
+.tag{padding:.15rem .45rem;border-radius:.3rem;font-size:.7rem;font-weight:500;background:var(--surface2);color:var(--muted)}
+.info-row{display:flex;justify-content:space-between;align-items:center;font-size:.72rem;margin-bottom:.2rem}
+.info-label{color:var(--muted)}
+.val-gold{color:var(--gold);font-weight:700}
+.val-green{color:var(--green);font-weight:700}
+.val-orange{color:#f59e0b;font-weight:700}
+.val-red{color:var(--red);font-weight:700}
+.val-teal{color:var(--teal);font-weight:700}
+.val-muted{color:var(--muted)}
+.decision-btn{margin-top:.5rem;display:inline-flex;align-items:center;gap:.3rem;padding:.3rem .7rem;border-radius:999px;font-size:.74rem;font-weight:600;transition:opacity var(--trans);border:none;cursor:pointer}
+.decision-btn:hover{opacity:.8}
+.d-grade{background:#0e749022;color:var(--teal)}
+.d-hold{background:#f0c03022;color:var(--gold)}
+.d-sell{background:#e0525222;color:var(--red)}
+.d-undecided{background:var(--surface2);color:var(--muted)}
+.btn-delete{width:100%;margin-top:.4rem;padding:.35rem;border-radius:.4rem;font-size:.72rem;color:var(--muted);display:flex;align-items:center;justify-content:center;gap:.3rem;transition:all var(--trans);opacity:0}
+.card:hover .btn-delete{opacity:1}
+.btn-delete:hover{background:#e0525215;color:var(--red)}
+
+/* ── Condition colors ── */
+.cond-M{background:#bae6fd33;color:#0369a1}
+.cond-NM{background:#bbf7d033;color:#166534}
+.cond-LP{background:#fef08a33;color:#854d0e}
+.cond-MP{background:#fed7aa33;color:#9a3412}
+.cond-HP{background:#fecaca33;color:#991b1b}
+.cond-D{background:#e5e7eb33;color:#374151}
+[data-theme="dark"] .cond-M{background:#0e749033;color:#38bdf8}
+[data-theme="dark"] .cond-NM{background:#16653433;color:#6daa45}
+[data-theme="dark"] .cond-LP{background:#854d0e33;color:#fbbf24}
+[data-theme="dark"] .cond-MP{background:#9a341233;color:#fb923c}
+[data-theme="dark"] .cond-HP{background:#991b1b33;color:#f87171}
+[data-theme="dark"] .cond-D{background:#37415133;color:#9ca3af}
+
+/* ── Empty state ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 1rem;gap:1rem;color:var(--muted);text-align:center}
+.empty svg{opacity:.2;width:4rem;height:4rem}
+.empty-title{font-size:1rem;font-weight:600;color:var(--text)}
+.empty-sub{font-size:.875rem}
+
+/* ── Modal backdrop ── */
+.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(3px)}
+.modal-backdrop.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:calc(var(--radius)*1.2);width:100%;max-width:30rem;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.modal-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem .75rem;border-bottom:1px solid var(--border)}
+.modal-title{font-size:1rem;font-weight:700}
+.modal-close{width:1.75rem;height:1.75rem;border-radius:50%;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:background var(--trans)}
+.modal-close:hover{background:var(--surface2)}
+.modal-body{padding:1.25rem}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+.form-col{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:.3rem}
+.form-label{font-size:.78rem;font-weight:600;color:var(--muted)}
+.form-input,.form-select,.form-textarea{padding:.45rem .65rem;border-radius:var(--radius-sm);border:1.5px solid var(--border);background:var(--surface2);font-size:.875rem;outline:none;transition:border-color var(--trans);color:var(--text);width:100%}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--primary)}
+.form-textarea{resize:vertical;min-height:3.5rem}
+.decision-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.dec-btn{padding:.55rem .5rem;border-radius:.5rem;font-size:.8rem;font-weight:600;display:flex;align-items:center;justify-content:center;gap:.35rem;border:2px solid var(--border);background:var(--surface2);color:var(--muted);transition:all var(--trans);cursor:pointer}
+.dec-btn.sel-grade{border-color:var(--teal);background:#0e749018;color:var(--teal)}
+.dec-btn.sel-hold{border-color:var(--gold);background:#f0c03018;color:var(--gold)}
+.dec-btn.sel-sell{border-color:var(--red);background:#e0525218;color:var(--red)}
+.dec-btn.sel-undecided{border-color:var(--muted);background:var(--surface);color:var(--muted)}
+.wish-toggle{display:inline-flex;align-items:center;gap:.5rem;padding:.45rem .75rem;border-radius:.5rem;border:2px solid var(--border);background:var(--surface2);font-size:.82rem;font-weight:600;color:var(--muted);transition:all var(--trans);cursor:pointer}
+.wish-toggle.active{border-color:#f59e0b;background:#f59e0b18;color:#f59e0b}
+.form-actions{display:flex;gap:.5rem;margin-top:.5rem}
+.btn-submit{flex:1;padding:.55rem 1rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-fg);font-weight:700;font-size:.9rem;transition:opacity var(--trans)}
+.btn-submit:hover{opacity:.85}
+.btn-submit:disabled{opacity:.45;cursor:not-allowed}
+.btn-cancel{padding:.55rem 1rem;border-radius:var(--radius);border:1.5px solid var(--border);background:var(--surface2);color:var(--muted);font-size:.9rem;transition:all var(--trans)}
+.btn-cancel:hover{color:var(--text);border-color:var(--text)}
+
+/* ── Skeleton ── */
+.skeleton{background:linear-gradient(90deg,var(--surface2) 25%,var(--surface) 50%,var(--surface2) 75%);background-size:200% 100%;animation:shimmer 1.4s infinite;border-radius:var(--radius);aspect-ratio:3/4}
+@keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+
+/* ── Footer ── */
+footer{border-top:1px solid var(--border);padding:1.25rem 0;text-align:center;font-size:.75rem;color:var(--muted);margin-top:3rem}
+footer a{color:var(--muted);text-decoration:none;transition:color var(--trans)}
+footer a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="container">
+    <div class="header-inner">
+      <a href="#" class="logo">
+        <svg width="28" height="28" viewBox="0 0 32 32" fill="none" aria-label="Pokémon Samling logo">
+          <circle cx="16" cy="16" r="14" fill="var(--primary)"/>
+          <circle cx="16" cy="16" r="5.5" fill="var(--bg)"/>
+          <line x1="2" y1="16" x2="30" y2="16" stroke="var(--bg)" stroke-width="2.5"/>
+          <circle cx="16" cy="16" r="3" fill="var(--primary)"/>
+        </svg>
+        <span>Pokémon Samling</span>
+      </a>
+
+      <div class="search-wrap">
+        <svg class="ico-search" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+        <input id="searchInput" type="search" placeholder="Søg kort, sæt, raritet..." autocomplete="off"/>
+        <button class="search-clear" id="searchClear" onclick="clearSearch()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <button class="btn-icon" id="filterToggle" onclick="toggleFilters()" title="Filtre">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="6" x2="20" y2="6"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="11" y1="18" x2="13" y2="18"/></svg>
+      </button>
+
+      <button class="btn-primary" onclick="openModal()" id="addBtn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+        <span class="btn-label">Tilføj kort</span>
+      </button>
+
+      <button class="btn-icon" id="themeBtn" onclick="toggleTheme()" title="Skift tema">
+        <svg id="themeIcon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- Filter bar -->
+  <div class="filter-bar" id="filterBar">
+    <div class="container">
+      <div class="filter-inner">
+        <span class="filter-label">Beslutning:</span>
+        <button class="chip active" data-filter="decision" data-val="Alle" onclick="setFilter('decision','Alle',this)">Alle</button>
+        <button class="chip" data-filter="decision" data-val="Send til grading" onclick="setFilter('decision','Send til grading',this)">Send til grading</button>
+        <button class="chip" data-filter="decision" data-val="Behold råt" onclick="setFilter('decision','Behold råt',this)">Behold råt</button>
+        <button class="chip" data-filter="decision" data-val="Sælg" onclick="setFilter('decision','Sælg',this)">Sælg</button>
+        <button class="chip" data-filter="decision" data-val="Uafgjort" onclick="setFilter('decision','Uafgjort',this)">Uafgjort</button>
+        <div class="divider"></div>
+        <button class="chip chip-wish" id="wishChip" onclick="toggleWishFilter()">⭐ Kun ønskeliste</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main class="container" style="padding-top:1.25rem;padding-bottom:2rem">
+
+  <!-- Stats -->
+  <div class="stats" id="statsBar"></div>
+
+  <!-- Result row -->
+  <div class="result-row">
+    <span class="result-count" id="resultCount"></span>
+    <button class="clear-link" id="clearFiltersBtn" style="display:none" onclick="clearAllFilters()">Ryd filtre</button>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid" id="cardGrid"></div>
+
+</main>
+
+<footer>
+  <p>Privat samlingsside ·
+    <a href="https://www.perplexity.ai/computer" target="_blank" rel="noopener">Created with Perplexity Computer</a>
+  </p>
+</footer>
+
+<!-- ADD/EDIT MODAL -->
+<div class="modal-backdrop" id="modalBackdrop" onclick="handleBackdropClick(event)">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-header">
+      <span class="modal-title" id="modalTitle">Tilføj nyt kort</span>
+      <button class="modal-close" onclick="closeModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <!-- Navn -->
+        <div class="form-group">
+          <label class="form-label" for="fName">Kortnavn *</label>
+          <input id="fName" class="form-input" placeholder="f.eks. Charizard ex" required/>
+        </div>
+        <!-- Sæt -->
+        <div class="form-group">
+          <label class="form-label" for="fSet">Sæt *</label>
+          <input id="fSet" class="form-input" placeholder="f.eks. SV 151"/>
+        </div>
+        <!-- Sætnummer -->
+        <div class="form-group">
+          <label class="form-label" for="fSetNum">Sætnummer</label>
+          <input id="fSetNum" class="form-input" placeholder="006/165"/>
+        </div>
+        <!-- Raritet -->
+        <div class="form-group">
+          <label class="form-label" for="fRarity">Raritet</label>
+          <input id="fRarity" class="form-input" placeholder="Double Rare"/>
+        </div>
+        <!-- Sprog -->
+        <div class="form-group">
+          <label class="form-label" for="fLang">Sprog</label>
+          <select id="fLang" class="form-select">
+            <option>Engelsk</option><option>Dansk</option><option>Japansk</option>
+            <option>Tysk</option><option>Fransk</option><option>Spansk</option><option>Koreansk</option>
+          </select>
+        </div>
+        <!-- Stand -->
+        <div class="form-group">
+          <label class="form-label" for="fCond">Stand</label>
+          <select id="fCond" class="form-select">
+            <option value="M">M — Mint</option>
+            <option value="NM" selected>NM — Near Mint</option>
+            <option value="LP">LP — Light Play</option>
+            <option value="MP">MP — Moderate Play</option>
+            <option value="HP">HP — Heavy Play</option>
+            <option value="D">D — Damaged</option>
+          </select>
+        </div>
+        <!-- Værdi -->
+        <div class="form-group">
+          <label class="form-label" for="fValue">Estimeret råværdi</label>
+          <input id="fValue" class="form-input" type="number" min="0" step="0.01" placeholder="0"/>
+        </div>
+        <!-- Valuta -->
+        <div class="form-group">
+          <label class="form-label" for="fCurr">Valuta</label>
+          <select id="fCurr" class="form-select">
+            <option>DKK</option><option>EUR</option><option>USD</option>
+          </select>
+        </div>
+        <!-- Grading potentiale -->
+        <div class="form-group form-col">
+          <label class="form-label" for="fGrade">Grading-potentiale</label>
+          <select id="fGrade" class="form-select">
+            <option>Meget høj</option><option>Høj</option>
+            <option selected>Medium</option><option>Lav</option><option>Ukendt</option>
+          </select>
+        </div>
+        <!-- Beslutning -->
+        <div class="form-group form-col">
+          <label class="form-label">Beslutning</label>
+          <div class="decision-grid" id="decisionGrid">
+            <button type="button" class="dec-btn" data-dec="Send til grading" onclick="selectDecision('Send til grading')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>
+              Send til grading
+            </button>
+            <button type="button" class="dec-btn" data-dec="Behold råt" onclick="selectDecision('Behold råt')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>
+              Behold råt
+            </button>
+            <button type="button" class="dec-btn" data-dec="Sælg" onclick="selectDecision('Sælg')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+              Sælg
+            </button>
+            <button type="button" class="dec-btn sel-undecided" data-dec="Uafgjort" onclick="selectDecision('Uafgjort')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
+              Uafgjort
+            </button>
+          </div>
+        </div>
+        <!-- Billede URL -->
+        <div class="form-group form-col">
+          <label class="form-label" for="fImg">Billede-URL (valgfri)</label>
+          <input id="fImg" class="form-input" placeholder="https://..."/>
+        </div>
+        <!-- Ønskeliste -->
+        <div class="form-group form-col">
+          <button type="button" class="wish-toggle" id="wishToggle" onclick="toggleWish()">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="wishStar"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <span id="wishLabel">Tilføj til ønskeliste</span>
+          </button>
+        </div>
+        <!-- Noter -->
+        <div class="form-group form-col">
+          <label class="form-label" for="fNotes">Noter</label>
+          <textarea id="fNotes" class="form-textarea" placeholder="Tilstand, fundsted, særlige detaljer..."></textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn-submit" id="submitBtn" onclick="submitCard()">Tilføj kort</button>
+        <button class="btn-cancel" onclick="closeModal()">Annullér</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────
+let cards = JSON.parse(localStorage.getItem('pokemon_cards') || 'null') || [
+  {id:1,name:"Charizard ex",set:"Scarlet & Violet 151",setNumber:"006/165",language:"Engelsk",rarity:"Double Rare",condition:"NM",estimatedValue:850,currency:"DKK",gradingPotential:"Høj",decision:"Send til grading",wishlist:false,notes:"Næsten perfekt centring",imageUrl:""},
+  {id:2,name:"Pikachu V",set:"VMAX Climax",setNumber:"023/184",language:"Japansk",rarity:"Ultra Rare",condition:"LP",estimatedValue:120,currency:"DKK",gradingPotential:"Medium",decision:"Behold råt",wishlist:false,notes:"Lille bøjning i hjørnet",imageUrl:""},
+  {id:3,name:"Mewtwo ex",set:"Scarlet & Violet 151",setNumber:"205/165",language:"Dansk",rarity:"Special Illustration Rare",condition:"M",estimatedValue:320,currency:"DKK",gradingPotential:"Meget høj",decision:"Send til grading",wishlist:false,notes:"Mint fra pakke",imageUrl:""},
+  {id:4,name:"Umbreon VMAX",set:"Evolving Skies",setNumber:"215/203",language:"Engelsk",rarity:"Alternate Art",condition:"NM",estimatedValue:1200,currency:"DKK",gradingPotential:"Høj",decision:"Behold råt",wishlist:false,notes:"Populær alt art",imageUrl:""},
+  {id:5,name:"Rayquaza VMAX",set:"Evolving Skies",setNumber:"217/203",language:"Engelsk",rarity:"Alternate Art",condition:"EX",estimatedValue:450,currency:"DKK",gradingPotential:"Lav",decision:"Sælg",wishlist:false,notes:"Sælges for gevinst",imageUrl:""},
+];
+let nextId = Math.max(0,...cards.map(c=>c.id)) + 1;
+function save(){localStorage.setItem('pokemon_cards',JSON.stringify(cards))}
+
+// ── State ─────────────────────────────────────────────────────────────────
+let filters = {decision:'Alle',wishlist:false,search:''};
+let editId = null;
+let formDecision = 'Uafgjort';
+let formWish = false;
+
+// ── Theme ─────────────────────────────────────────────────────────────────
+function toggleTheme(){
+  const html=document.documentElement;
+  const dark=html.getAttribute('data-theme')==='dark';
+  html.setAttribute('data-theme',dark?'light':'dark');
+  updateThemeIcon(!dark);
+}
+function updateThemeIcon(isDark){
+  const icon=document.getElementById('themeIcon');
+  icon.innerHTML=isDark?
+    '<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>':
+    '<circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>';
+}
+
+// ── Search ─────────────────────────────────────────────────────────────────
+document.getElementById('searchInput').addEventListener('input',function(){
+  filters.search=this.value.toLowerCase();
+  document.getElementById('searchClear').classList.toggle('show',!!this.value);
+  render();
+});
+function clearSearch(){
+  document.getElementById('searchInput').value='';
+  document.getElementById('searchClear').classList.remove('show');
+  filters.search='';render();
+}
+
+// ── Filters ────────────────────────────────────────────────────────────────
+function toggleFilters(){
+  const bar=document.getElementById('filterBar');
+  bar.classList.toggle('open');
+}
+function setFilter(key,val,btn){
+  filters[key]=val;
+  document.querySelectorAll(`[data-filter="${key}"]`).forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+function toggleWishFilter(){
+  filters.wishlist=!filters.wishlist;
+  document.getElementById('wishChip').classList.toggle('active',filters.wishlist);
+  render();
+}
+function clearAllFilters(){
+  filters={decision:'Alle',wishlist:false,search:document.getElementById('searchInput').value.toLowerCase()};
+  document.querySelectorAll('[data-filter="decision"]').forEach(b=>b.classList.remove('active'));
+  document.querySelector('[data-filter="decision"][data-val="Alle"]').classList.add('active');
+  document.getElementById('wishChip').classList.remove('active');
+  render();
+}
+
+// ── Grading color ──────────────────────────────────────────────────────────
+function gradingClass(g){
+  if(g==='Meget høj')return'val-gold';
+  if(g==='Høj')return'val-green';
+  if(g==='Medium')return'val-orange';
+  if(g==='Lav')return'val-red';
+  return'val-muted';
+}
+
+// ── Decision badge ─────────────────────────────────────────────────────────
+function decClass(d){
+  if(d==='Send til grading')return'd-grade';
+  if(d==='Behold råt')return'd-hold';
+  if(d==='Sælg')return'd-sell';
+  return'd-undecided';
+}
+function decIcon(d){
+  if(d==='Send til grading')return'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="6"/><path d="M15.477 12.89 17 22l-5-3-5 3 1.523-9.11"/></svg>';
+  if(d==='Behold råt')return'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>';
+  if(d==='Sælg')return'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>';
+  return'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>';
+}
+
+// ── Cycle decision ─────────────────────────────────────────────────────────
+const DECISIONS=['Send til grading','Behold råt','Sælg','Uafgjort'];
+function cycleDecision(id,e){
+  e.stopPropagation();
+  const card=cards.find(c=>c.id===id);
+  if(!card)return;
+  const idx=DECISIONS.indexOf(card.decision);
+  card.decision=DECISIONS[(idx+1)%DECISIONS.length];
+  save();render();
+}
+
+// ── Toggle wishlist ────────────────────────────────────────────────────────
+function toggleCardWish(id,e){
+  e.stopPropagation();
+  const card=cards.find(c=>c.id===id);
+  if(!card)return;
+  card.wishlist=!card.wishlist;
+  save();render();
+}
+
+// ── Delete ─────────────────────────────────────────────────────────────────
+function deleteCard(id,e){
+  e.stopPropagation();
+  if(!confirm('Slet dette kort?'))return;
+  cards=cards.filter(c=>c.id!==id);
+  save();render();
+}
+
+// ── Render ─────────────────────────────────────────────────────────────────
+function render(){
+  const filtered=cards.filter(c=>{
+    const q=filters.search;
+    const matchSearch=!q||c.name.toLowerCase().includes(q)||c.set.toLowerCase().includes(q)||(c.rarity||'').toLowerCase().includes(q);
+    const matchDec=filters.decision==='Alle'||c.decision===filters.decision;
+    const matchWish=!filters.wishlist||c.wishlist;
+    return matchSearch&&matchDec&&matchWish;
+  });
+
+  // Stats
+  const totalVal=cards.reduce((s,c)=>s+(c.estimatedValue||0),0);
+  const toGrade=cards.filter(c=>c.decision==='Send til grading').length;
+  const wishes=cards.filter(c=>c.wishlist).length;
+  document.getElementById('statsBar').innerHTML=cards.length===0?'':
+    statsCard('📦','Kort i alt',cards.length)+
+    statsCard('📈','Samlet råværdi',totalVal.toLocaleString('da-DK')+' DKK')+
+    statsCard('🏅','Send til grading',toGrade)+
+    statsCard('⭐','Ønskeliste',wishes);
+
+  // Count
+  document.getElementById('resultCount').textContent=
+    filtered.length===cards.length?`${cards.length} kort`:`${filtered.length} af ${cards.length} kort`;
+  const hasActiveFilters=filters.decision!=='Alle'||filters.wishlist;
+  document.getElementById('clearFiltersBtn').style.display=hasActiveFilters?'':'none';
+
+  // Grid
+  const grid=document.getElementById('cardGrid');
+  if(filtered.length===0){
+    grid.innerHTML=`<div class="empty" style="grid-column:1/-1">
+      <svg viewBox="0 0 64 64" fill="currentColor"><circle cx="32" cy="32" r="28"/><circle cx="32" cy="32" r="11" fill="var(--bg)"/><path d="M4 32h56" stroke="var(--bg)" stroke-width="4"/><circle cx="32" cy="32" r="6"/></svg>
+      <p class="empty-title">Ingen kort fundet</p>
+      <p class="empty-sub">${cards.length===0?'Tryk på + for at tilføje dit første kort':'Prøv at ændre søgning eller filtre'}</p>
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML=filtered.map(c=>`
+    <div class="card" onclick="openModal(${c.id})" data-id="${c.id}">
+      <div class="card-img">
+        ${c.imageUrl
+          ?`<img src="${c.imageUrl}" alt="${c.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">`
+          :''}
+        <div class="card-placeholder" style="${c.imageUrl?'display:none':''}">
+          <svg width="56" height="56" viewBox="0 0 120 160" fill="currentColor" opacity=".2">
+            <rect x="5" y="5" width="110" height="150" rx="8"/>
+            <circle cx="60" cy="70" r="28" fill="var(--bg)"/>
+            <path d="M12 70h96" stroke="var(--bg)" stroke-width="6"/>
+            <circle cx="60" cy="70" r="11" fill="currentColor"/>
+          </svg>
+        </div>
+        <span class="badge-cond cond-${c.condition}">${c.condition}</span>
+        <button class="btn-wish" onclick="toggleCardWish(${c.id},event)" title="${c.wishlist?'Fjern fra ønskeliste':'Tilføj til ønskeliste'}">
+          <svg viewBox="0 0 24 24" fill="${c.wishlist?'#f59e0b':'none'}" stroke="${c.wishlist?'#f59e0b':'#ccc'}" stroke-width="2">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+        </button>
+      </div>
+      <div class="card-body">
+        <div class="card-name">${c.name}</div>
+        <div class="card-set">${c.set}${c.setNumber?' · '+c.setNumber:''}</div>
+        <div class="tag-row">
+          <span class="tag">${c.language}</span>
+          ${c.rarity?`<span class="tag">${c.rarity}</span>`:''}
+        </div>
+        <div class="info-row"><span class="info-label">Grading</span><span class="${gradingClass(c.gradingPotential)}">${c.gradingPotential}</span></div>
+        ${c.estimatedValue!=null?`<div class="info-row"><span class="info-label">Råværdi</span><span class="val-gold">${c.estimatedValue.toLocaleString('da-DK')} ${c.currency}</span></div>`:''}
+        <button class="decision-btn ${decClass(c.decision)}" onclick="cycleDecision(${c.id},event)" title="Klik for at skifte beslutning">
+          ${decIcon(c.decision)} ${c.decision}
+        </button>
+        <button class="btn-delete" onclick="deleteCard(${c.id},event)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          Slet
+        </button>
+      </div>
+    </div>`).join('');
+}
+
+function statsCard(emoji,label,value){
+  return `<div class="stat-card">
+    <div class="stat-icon"><span style="font-size:1.1rem">${emoji}</span></div>
+    <div><div class="stat-label">${label}</div><div class="stat-value">${value}</div></div>
+  </div>`;
+}
+
+// ── Modal ──────────────────────────────────────────────────────────────────
+function openModal(id){
+  editId=id||null;
+  const card=id?cards.find(c=>c.id===id):null;
+  document.getElementById('modalTitle').textContent=id?'Rediger kort':'Tilføj nyt kort';
+  document.getElementById('submitBtn').textContent=id?'Gem ændringer':'Tilføj kort';
+
+  document.getElementById('fName').value=card?.name||'';
+  document.getElementById('fSet').value=card?.set||'';
+  document.getElementById('fSetNum').value=card?.setNumber||'';
+  document.getElementById('fRarity').value=card?.rarity||'';
+  document.getElementById('fLang').value=card?.language||'Engelsk';
+  document.getElementById('fCond').value=card?.condition||'NM';
+  document.getElementById('fValue').value=card?.estimatedValue!=null?card.estimatedValue:'';
+  document.getElementById('fCurr').value=card?.currency||'DKK';
+  document.getElementById('fGrade').value=card?.gradingPotential||'Medium';
+  document.getElementById('fImg').value=card?.imageUrl||'';
+  document.getElementById('fNotes').value=card?.notes||'';
+
+  formDecision=card?.decision||'Uafgjort';
+  formWish=card?.wishlist||false;
+  renderDecisionBtns();
+  renderWishToggle();
+
+  document.getElementById('modalBackdrop').classList.add('open');
+  setTimeout(()=>document.getElementById('fName').focus(),50);
+}
+function closeModal(){
+  document.getElementById('modalBackdrop').classList.remove('open');
+  editId=null;
+}
+function handleBackdropClick(e){
+  if(e.target===document.getElementById('modalBackdrop'))closeModal();
+}
+
+function selectDecision(d){formDecision=d;renderDecisionBtns();}
+function renderDecisionBtns(){
+  document.querySelectorAll('.dec-btn').forEach(b=>{
+    b.className='dec-btn';
+    if(b.dataset.dec===formDecision){
+      if(formDecision==='Send til grading')b.classList.add('sel-grade');
+      else if(formDecision==='Behold råt')b.classList.add('sel-hold');
+      else if(formDecision==='Sælg')b.classList.add('sel-sell');
+      else b.classList.add('sel-undecided');
+    }
+  });
+}
+function toggleWish(){formWish=!formWish;renderWishToggle();}
+function renderWishToggle(){
+  const btn=document.getElementById('wishToggle');
+  const lbl=document.getElementById('wishLabel');
+  const star=document.getElementById('wishStar');
+  btn.classList.toggle('active',formWish);
+  lbl.textContent=formWish?'På ønskeliste':'Tilføj til ønskeliste';
+  star.setAttribute('fill',formWish?'#f59e0b':'none');
+  star.setAttribute('stroke',formWish?'#f59e0b':'currentColor');
+}
+
+function submitCard(){
+  const name=document.getElementById('fName').value.trim();
+  const set=document.getElementById('fSet').value.trim();
+  if(!name||!set){alert('Udfyld venligst kortnavn og sæt.');return;}
+
+  const data={
+    id:editId||nextId++,
+    name,set,
+    setNumber:document.getElementById('fSetNum').value.trim()||null,
+    rarity:document.getElementById('fRarity').value.trim()||null,
+    language:document.getElementById('fLang').value,
+    condition:document.getElementById('fCond').value,
+    estimatedValue:document.getElementById('fValue').value?parseFloat(document.getElementById('fValue').value):null,
+    currency:document.getElementById('fCurr').value,
+    gradingPotential:document.getElementById('fGrade').value,
+    decision:formDecision,
+    wishlist:formWish,
+    imageUrl:document.getElementById('fImg').value.trim()||null,
+    notes:document.getElementById('fNotes').value.trim()||null,
+  };
+
+  if(editId){cards=cards.map(c=>c.id===editId?data:c);}
+  else{cards.push(data);}
+  save();closeModal();render();
+}
+
+// Keyboard: Escape closes modal
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── Init ───────────────────────────────────────────────────────────────────
+render();
+</script>
+</body>
+</html>
