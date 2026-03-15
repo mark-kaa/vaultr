@@ -167,12 +167,21 @@ tbody tr:hover .btn-del{opacity:1}
 .ai-detail-close{color:var(--muted);padding:.1rem .3rem;border-radius:.25rem;font-size:.75rem;transition:all var(--trans)}
 .ai-detail-close:hover{background:var(--surface3);color:var(--text)}
 .ai-scores-row{display:flex;flex-wrap:wrap;gap:.5rem;margin-bottom:.6rem}
-.score-dim{display:flex;flex-direction:column;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.4rem .6rem;min-width:80px}
+.score-dim{display:flex;flex-direction:column;align-items:center;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.4rem .6rem;min-width:90px;cursor:pointer;transition:all var(--trans);position:relative}
+.score-dim:hover{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 20%,transparent)}
 .score-dim-label{font-size:.65rem;color:var(--muted);margin-bottom:.2rem;text-align:center;font-weight:600;text-transform:uppercase;letter-spacing:.03em}
+.score-dim-label::after{content:' ℹ️';font-size:.6rem;opacity:.5}
 .score-dim-val{font-size:1.1rem;font-weight:800}
 .score-dim-val.high{color:var(--green)}
 .score-dim-val.mid{color:var(--orange)}
 .score-dim-val.low{color:var(--red)}
+/* Dim expand panel */
+.dim-expand{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);min-width:240px;max-width:320px;background:var(--surface);border:1.5px solid var(--primary);border-radius:var(--radius);padding:.75rem .9rem;z-index:20;box-shadow:var(--shadow-lg);font-size:.78rem;line-height:1.6;color:var(--text);text-align:left;white-space:normal}
+.dim-expand.open{display:block}
+.dim-expand-title{font-size:.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
+.dim-expand::before{content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:12px;height:12px;background:var(--surface);border-left:1.5px solid var(--primary);border-top:1.5px solid var(--primary);transform:translateX(-50%) rotate(45deg)}
+/* Lang switcher */
+.lang-sel{padding:.22rem .55rem;border-radius:var(--radius-sm);background:var(--surface2);border:1px solid var(--border);font-size:.78rem;color:var(--muted);outline:none;cursor:pointer}
 .ai-reasoning{font-size:.82rem;line-height:1.65;color:var(--text)}
 .ai-sources{margin-top:.5rem;font-size:.72rem;color:var(--muted);font-style:italic}
 .ai-timestamp{font-size:.68rem;color:var(--faint);margin-top:.25rem}
@@ -303,6 +312,18 @@ tbody tr:hover .btn-del{opacity:1}
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
       <span class="lbl">Tilføj</span>
     </button>
+    <select class="lang-sel" id="langSel" onchange="setLang(this.value)" title="Language / Sprog">
+      <option value="da">🇩🇰 DA</option>
+      <option value="en">🇬🇧 EN</option>
+      <option value="ja">🇯🇵 JA</option>
+      <option value="ko">🇰🇷 KO</option>
+      <option value="zh">🇨🇳 ZH</option>
+      <option value="de">🇩🇪 DE</option>
+      <option value="fr">🇫🇷 FR</option>
+      <option value="es">🇪🇸 ES</option>
+      <option value="pt">🇵🇹 PT</option>
+      <option value="it">🇮🇹 IT</option>
+    </select>
     <button class="btn-icon" onclick="toggleTheme()" title="Skift tema">
       <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -323,8 +344,8 @@ tbody tr:hover .btn-del{opacity:1}
 <!-- TABS -->
 <div class="tabs">
   <div class="tabs-inner">
-    <button class="tab" id="tab-overview" onclick="switchTab('overview')">📊 Overblik</button>
-    <button class="tab active" id="tab-graded" onclick="switchTab('graded')">🏅 Graderede kort</button>
+    <button class="tab active" id="tab-overview" onclick="switchTab('overview')">📊 Overblik</button>
+    <button class="tab" id="tab-graded" onclick="switchTab('graded')">🏅 Graderede kort</button>
     <button class="tab" id="tab-sealed" onclick="switchTab('sealed')">📦 Sealed produkter</button>
     <button class="tab" id="tab-raw" onclick="switchTab('raw')">🃏 Raw kort</button>
   </div>
@@ -397,19 +418,19 @@ let apiKey = localStorage.getItem('pf_api_key') || '';
 function initApiKey(){
   if(apiKey){
     document.getElementById('apiKeyInput').value = apiKey;
-    document.getElementById('keyStatus').textContent = '✓ Nøgle gemt — AI-analyse aktiveret';
+    document.getElementById('keyStatus').textContent = t('api_active');
     document.getElementById('keyStatus').classList.add('ok');
     document.getElementById('batchBtn').disabled = false;
   }
 }
 function saveApiKey(){
   apiKey = document.getElementById('apiKeyInput').value.trim();
-  if(!apiKey){ showToast('❌ Ingen nøgle indtastet'); return; }
+  if(!apiKey){ showToast(t('no_key_entered')); return; }
   localStorage.setItem('pf_api_key', apiKey);
-  document.getElementById('keyStatus').textContent = '✓ Nøgle gemt — AI-analyse aktiveret';
+  document.getElementById('keyStatus').textContent = t('api_active');
   document.getElementById('keyStatus').classList.add('ok');
   document.getElementById('batchBtn').disabled = false;
-  showToast('✅ API-nøgle gemt');
+  showToast(t('saved_key'));
   render();
 }
 
@@ -585,43 +606,99 @@ function buildPrompt(item){
   const mkt   = totV(item);
   const cost  = totC(item);
   const isGraded = item.grade && item.grade!=='Ungraded';
+  const isSealed = (item.portfolioName||'').toLowerCase().includes('sealed');
+  const isRaw    = !isGraded && !isSealed;
 
-  return `Du er en ekspert i samlekort-investering og markedsanalyse, specialiseret i Pokémon TCG, One Piece TCG og Magic: The Gathering.
+  const itemTypeDesc = isGraded
+    ? `Professionelt graderet kort — Grade: ${item.grade}`
+    : isSealed
+    ? 'Sealed/uåbnet produkt (boosterpakke, display, boks eller lignende)'
+    : `Ugraded råt samlekort (ikke sendt til grading) — Stand: ${item.condition||'Ukendt'}`;
 
-Analyser følgende samleobjekt og giv en struktureret investeringsanbefaling på DANSK:
+  const rec_options = isGraded
+    ? '"Sælg" | "Behold graderet"'
+    : isSealed
+    ? '"Sælg" | "Behold sealed"'
+    : '"Sælg" | "Behold råt" | "Send til grading"';
 
-**PRODUKT:**
-- Navn: ${item.productName}
-- Kategori: ${item.category}
-- Sæt: ${item.set}
-${item.cardNumber?`- Kortnummer: ${item.cardNumber}`:''}
-${item.rarity?`- Raritet: ${item.rarity}`:''}
-${isGraded?`- Grade: ${item.grade}`:'- Type: Sealed produkt (uåbnet)'}
+  const analysis_point2 = isGraded
+    ? 'Gradingskvalitet og PSA/BGS/CGC-præmium i forhold til nuværende markedspotentiale'
+    : isSealed
+    ? 'ROI-potentiale for sealed produkt over 1-3 år (set vs. supply, print run, popularitet)'
+    : 'Grading-potentiale: hvad er sandsynligheden for PSA 9/10, og hvad ville det betyde for værdien?';
+
+  const langNote = currentLang === 'da' ? 'Svar på DANSK.' :
+    currentLang === 'en' ? 'Reply in ENGLISH.' :
+    currentLang === 'ja' ? '日本語で回答してください。' :
+    currentLang === 'ko' ? '한국어로 답변하세요.' :
+    currentLang === 'zh' ? '请用中文回答。' :
+    currentLang === 'de' ? 'Antworte auf DEUTSCH.' :
+    currentLang === 'fr' ? 'Réponds en FRANÇAIS.' :
+    currentLang === 'es' ? 'Responde en ESPAÑOL.' :
+    currentLang === 'pt' ? 'Responda em PORTUGUÊS.' :
+    currentLang === 'it' ? 'Rispondi in ITALIANO.' : 'Reply in ENGLISH.';
+
+  const recTranslations = {
+    sell: currentLang==='da'?'Sælg':currentLang==='de'?'Verkaufen':currentLang==='fr'?'Vendre':currentLang==='es'?'Vender':currentLang==='pt'?'Vender':currentLang==='it'?'Vendere':currentLang==='ja'?'売る':currentLang==='ko'?'판매':currentLang==='zh'?'出售':'Sell',
+    hold_raw: currentLang==='da'?'Behold råt':currentLang==='de'?'Roh behalten':currentLang==='fr'?'Conserver brut':currentLang==='es'?'Mantener en bruto':currentLang==='pt'?'Manter bruto':currentLang==='it'?'Tieni grezzo':currentLang==='ja'?'生のまま保持':currentLang==='ko'?'원본 보관':currentLang==='zh'?'保持原状':'Keep raw',
+    hold_graded: currentLang==='da'?'Behold graderet':currentLang==='de'?'Bewertet halten':currentLang==='fr'?'Conserver noté':currentLang==='es'?'Mantener graduado':currentLang==='pt'?'Manter graduado':currentLang==='it'?'Tieni graduato':currentLang==='ja'?'グレードのまま保持':currentLang==='ko'?'등급 보관':currentLang==='zh'?'保持评级':'Keep graded',
+    hold_sealed: currentLang==='da'?'Behold sealed':currentLang==='de'?'Versiegelt halten':currentLang==='fr'?'Conserver scellé':currentLang==='es'?'Mantener sellado':currentLang==='pt'?'Manter selado':currentLang==='it'?'Tieni sigillato':currentLang==='ja'?'未開封のまま保持':currentLang==='ko'?'미개속 보관':currentLang==='zh'?'保持密封':'Keep sealed',
+    grade: currentLang==='da'?'Send til grading':currentLang==='de'?'Zum Grading senden':currentLang==='fr'?'Envoyer pour gradation':currentLang==='es'?'Enviar a grading':currentLang==='pt'?'Enviar para grading':currentLang==='it'?'Invia per grading':currentLang==='ja'?'グレーディングに送る':currentLang==='ko'?'그레이딩 발송':currentLang==='zh'?'送去评级':'Send to grading',
+  };
+  const rec_options_translated = isGraded
+    ? `"${recTranslations.sell}" | "${recTranslations.hold_graded}"`
+    : isSealed
+    ? `"${recTranslations.sell}" | "${recTranslations.hold_sealed}"`
+    : `"${recTranslations.sell}" | "${recTranslations.hold_raw}" | "${recTranslations.grade}"`;
+
+  return `You are an expert in collectible card investment and market analysis, specializing in Pokémon TCG, One Piece TCG, Magic: The Gathering, and Riftbound.
+
+${langNote}
+
+Analyze this collectible item and provide a structured investment recommendation:
+
+**ITEM:**
+- Name: ${item.productName}
+- Category: ${item.category}
+- Set: ${item.set}
+${item.cardNumber?`- Card number: ${item.cardNumber}`:''}
+${item.rarity?`- Rarity: ${item.rarity}`:''}
+- Item type: ${itemTypeDesc}
 ${item.variance?`- Variant: ${item.variance}`:''}
-- Antal: ${item.quantity}
+- Quantity held: ${item.quantity}
 
-**ØKONOMI:**
-- Kostpris: ${cost>0?fmtDKK(cost):'Ukendt'}
-- Nuværende markedspris: ${mkt>0?fmtDKK(mkt):'Ukendt'}
-- Gevinst/tab: ${cost>0?fmtDKK(plVal)+' ('+fmtP(pct)+')':'Ukendt'}
+**FINANCIALS:**
+- Cost paid: ${cost>0?cost.toFixed(2)+' DKK':'Unknown'}
+- Current market price: ${mkt>0?mkt.toFixed(2)+' DKK':'Unknown'}
+- Unrealized P/L: ${cost>0?(plVal.toFixed(2)+' DKK ('+fmtP(pct)+')'):'Unknown'}
 
-**DIN ANALYSE SKAL INKLUDERE:**
-1. Nuværende pristrend (stigende/faldende/stabil) baseret på markedsdata
-2. ${isGraded?'Gradingskvalitet i forhold til markedspotentiale':'ROI-potentiale for sealed produkt over 1-3 år'}
-3. Efterspørgsel og popularitet i samlermiljøet lige nu
-4. Konkret anbefaling: SÆLG, BEHOLD eller SEND TIL GRADING (kun relevant for ugraded kort)
+**YOUR ANALYSIS MUST COVER:**
+1. Price trend: Is the price currently rising, falling, or stable? Quote specific % if possible.
+2. ${analysis_point2}
+3. Current demand and collector interest — is this card/product actively searched/traded right now?
+4. Specific recommendation based on the above.
 
-**SVAR I PRÆCIST DETTE JSON-FORMAT (ingen anden tekst):**
+**IMPORTANT — dimension_reasoning fields:**
+- price_trend_reasoning: Explain WHY the price trend score is what it is (recent sales data, market direction, supply/demand changes). Be specific.
+- demand_reasoning: Explain WHY demand is at that level (competitive play, nostalgia, set popularity, recent announcements).
+- roi_reasoning: Explain WHY the ROI potential is what it is (grading upside, sealed appreciation, population reports, comparable sales).
+
+**REPLY IN EXACTLY THIS JSON FORMAT (no other text, no markdown fences):**
 {
-  "recommendation": "Sælg" | "Behold råt" | "Send til grading",
-  "overall_score": <1-10 heltal>,
+  "recommendation": ${rec_options_translated},
+  "overall_score": <integer 1-10>,
   "dimensions": {
-    "price_trend": <1-10>,
-    "demand": <1-10>,
-    "roi_potential": <1-10>
+    "price_trend": <integer 1-10>,
+    "demand": <integer 1-10>,
+    "roi_potential": <integer 1-10>
   },
-  "reasoning": "<2-3 sætninger på dansk med konkret begrundelse>",
-  "key_factor": "<den vigtigste enkeltfaktor for anbefalingen, maks 8 ord>"
+  "dimension_reasoning": {
+    "price_trend_reasoning": "<1-2 sentences explaining the price trend score>",
+    "demand_reasoning": "<1-2 sentences explaining the demand score>",
+    "roi_reasoning": "<1-2 sentences explaining the ROI potential score>"
+  },
+  "reasoning": "<2-3 sentences overall recommendation rationale in the user's language>",
+  "key_factor": "<single most important factor, max 8 words>"
 }`;
 }
 
@@ -1149,31 +1226,61 @@ function renderAIDetailRow(item, colSpan){
   const ai=aiCache[item.id];
   if(!ai||expandedRow!==item.id) return '';
   const rec=ai.recommendation||'';
-  const recCls=rec==='Sælg'?'ai-rec-sell':rec==='Send til grading'?'ai-rec-grade':'ai-rec-hold';
+  const recCls=rec===t('sell')||rec==='Sælg'||rec==='Sell'?'ai-rec-sell':(rec===t('grade')||rec==='Send til grading'||rec==='Send to grading')?'ai-rec-grade':'ai-rec-hold';
   const dims=ai.dimensions||{};
-  const dimKeys={price_trend:'Pristrend',demand:'Efterspørgsel',roi_potential:'ROI-potentiale'};
-  const dimsHtml=Object.entries(dimKeys).map(([k,label])=>{
+  const dr=ai.dimension_reasoning||{};
+  const dimDefs=[
+    {k:'price_trend', label:t('dim_pristrend'), reasonKey:'price_trend_reasoning', icon:'📈',
+     tooltip: t('dim_pristrend_tip')},
+    {k:'demand',      label:t('dim_eftersp'),   reasonKey:'demand_reasoning',      icon:'🔥',
+     tooltip: t('dim_eftersp_tip')},
+    {k:'roi_potential',label:t('dim_roi'),      reasonKey:'roi_reasoning',         icon:'💰',
+     tooltip: t('dim_roi_tip')},
+  ];
+  const dimsHtml=dimDefs.map(({k,label,reasonKey,icon,tooltip})=>{
     const v=dims[k]||0;
     const cls=scoreColor(v);
-    return `<div class="score-dim"><div class="score-dim-label">${label}</div><div class="score-dim-val ${cls}">${v}/10</div></div>`;
+    const reason=dr[reasonKey]||tooltip;
+    const uid=item.id+'-'+k;
+    return `<div class="score-dim" onclick="toggleDimExpand('${uid}',event)" title="${t('click_details')}">
+      <div class="score-dim-label">${label}</div>
+      <div class="score-dim-val ${cls}">${v}/10</div>
+      <div class="dim-expand" id="dim-${uid}">
+        <div class="dim-expand-title">${icon} ${label}</div>
+        <div>${esc(reason)}</div>
+      </div>
+    </div>`;
   }).join('');
-  const ts=ai.timestamp?new Date(ai.timestamp).toLocaleString('da-DK'):'';
+  const ts=ai.timestamp?new Date(ai.timestamp).toLocaleString(currentLang==='da'?'da-DK':currentLang==='ja'?'ja-JP':currentLang==='ko'?'ko-KR':currentLang==='zh'?'zh-CN':'en-GB'):'';
   const citations=(ai.citations||[]).slice(0,3);
+  const recIcon=rec===t('sell')||rec==='Sælg'||rec==='Sell'?'📤':(rec===t('grade')||rec==='Send til grading'||rec==='Send to grading')?'🏅':'📦';
   return `<tr class="ai-detail-row"><td colspan="${colSpan}">
     <div class="ai-detail-inner">
       <div class="ai-detail-header">
-        <span class="ai-detail-title">🤖 AI-analyse · ${esc(item.productName)}</span>
-        <button class="ai-detail-close" onclick="toggleDetail('${item.id}')">✕ Luk</button>
+        <span class="ai-detail-title">🤖 ${t('ai_analyse')} · ${esc(item.productName)}</span>
+        <button class="ai-detail-close" onclick="toggleDetail('${item.id}')">✕ ${t('close')}</button>
       </div>
-      <div><span class="ai-rec-chip ${recCls}">${rec==='Sælg'?'📤':'rec'==='Send til grading'?'🏅':'📦'} ${esc(rec)}</span></div>
+      <div><span class="ai-rec-chip ${recCls}">${recIcon} ${esc(rec)}</span></div>
       <div class="ai-scores-row">${dimsHtml}</div>
       <div class="ai-reasoning">${esc(ai.reasoning||'')}</div>
-      ${ai.key_factor?`<div style="margin-top:.4rem;font-size:.75rem;font-weight:700;color:var(--muted)">Nøglefaktor: <span style="color:var(--text)">${esc(ai.key_factor)}</span></div>`:''}
-      ${citations.length?`<div class="ai-sources">Kilder: ${citations.map(c=>`<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`).join(' · ')}</div>`:''}
-      ${ts?`<div class="ai-timestamp">Analyseret: ${ts}</div>`:''}
+      ${ai.key_factor?`<div style="margin-top:.4rem;font-size:.75rem;font-weight:700;color:var(--muted)">${t('key_factor')}: <span style="color:var(--text)">${esc(ai.key_factor)}</span></div>`:''}
+      ${citations.length?`<div class="ai-sources">${t('sources')}: ${citations.map(c=>{try{return `<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`}catch(e){return esc(c)}}).join(' · ')}</div>`:''}
+      ${ts?`<div class="ai-timestamp">${t('analysed')}: ${ts}</div>`:''}
     </div>
   </td></tr>`;
 }
+
+function toggleDimExpand(uid, e){
+  e.stopPropagation();
+  const el=document.getElementById('dim-'+uid);
+  if(!el) return;
+  const isOpen=el.classList.contains('open');
+  // Close all others first
+  document.querySelectorAll('.dim-expand.open').forEach(d=>d.classList.remove('open'));
+  if(!isOpen) el.classList.add('open');
+}
+// Close dim expands on outside click
+document.addEventListener('click', ()=>{ document.querySelectorAll('.dim-expand.open').forEach(d=>d.classList.remove('open')); });
 
 function renderTable(filtered){
   const container=document.getElementById('tableContainer');
@@ -1383,10 +1490,283 @@ function showToast(msg){
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 // ═══════════════════════════════════════════════════════
+// I18N — 10 languages
+// ═══════════════════════════════════════════════════════
+let currentLang = localStorage.getItem('pf_lang') || 'da';
+
+const TRANSLATIONS = {
+  da:{
+    tab_overview:'📊 Overblik', tab_graded:'🏅 Graderede kort', tab_sealed:'📦 Sealed produkter', tab_raw:'🃏 Raw kort',
+    search_ph:'Søg navn, sæt, grade...',
+    upload_csv:'Upload CSV', add:'Tilføj',
+    api_label:'🤖 Perplexity API-nøgle', api_save:'Gem nøgle', api_no_key:'Ingen nøgle gemt — analyser er deaktiveret', api_active:'✓ Nøgle gemt — AI-analyse aktiveret', api_link:'Hent API-nøgle →',
+    analyse_all:'Analyser alle (AI)', analysing:'Analyserer',
+    ai_analyse:'AI-analyse', close:'Luk', sources:'Kilder', analysed:'Analyseret', key_factor:'Nøglefaktor',
+    dim_pristrend:'Pristrend', dim_eftersp:'Efterspørgsel', dim_roi:'ROI-potentiale',
+    dim_pristrend_tip:'Baseret på prishistorik de seneste 4 uger — om prisen er stigende, faldende eller stabil på det sekundære marked.',
+    dim_eftersp_tip:'Baseret på søgevolumen, handelsaktivitet og popularitet i samlermiljøet lige nu.',
+    dim_roi_tip:'Kombineret potentiale fra grading-præmium, sealed-appreciering og markedsudvikling over 1-3 år.',
+    click_details:'Klik for detaljer',
+    sell:'Sælg', hold:'Behold råt', grade:'Send til grading',
+    no_data:'Ingen data endnu', no_results:'Ingen resultater',
+    upload_start:'Upload en CSV-fil for at starte', clear_filter:'Ryd filtre eller søgning',
+    delete_confirm:'Slet denne post?',
+    posts:'Poster', pcs:'stk', cost:'Kostpris', market_val:'Markedsværdi', pl:'P/L', ai_analysed:'AI-analyseret', sell_ops:'Salgsmuligheder',
+    grade_cands:'Send til grading', watchlist:'Watchlist',
+    sort_name:'Navn', sort_set:'Sæt', sort_score:'AI-score', sort_val:'Markedspris', sort_pl:'P/L', sort_date:'Dato', sort_qty:'Antal', sort_rarity:'Raritet', sort_cond:'Stand',
+    col_name:'Navn', col_set:'Sæt', col_nr:'Nr.', col_rarity:'Raritet', col_grade:'Grade', col_cat:'Kategori', col_cost:'Kostpris', col_mkt:'Markedspris', col_cond:'Stand', col_ai:'🤖 AI-analyse',
+    added:'Tilføjet',
+    empty_title:'Ingen data endnu',
+    analyse_btn:'🤖 Analysér', reanalyse:'↺',
+    saved_key:'✅ API-nøgle gemt', no_key_entered:'❌ Ingen nøgle indtastet',
+    all_analysed:'✅ Alle poster er allerede analyseret',
+    batch_done:'✅ Batch-analyse færdig',
+    analysis_done:'✅ Analyse færdig',
+    api_err:'❌ API-fejl',
+    import_ok:'✅ Importeret',
+    graded_s:'graderede', sealed_s:'sealed', raw_s:'raw',
+    new_zero:'0 nye',
+    dash_portfolio:'Porteføljeoverblik', dash_cat:'Kategori & Fordeling',
+    dash_monthly:'Kapitalforbrug over tid', dash_ai:'AI-indsigter', dash_top:'Top Performers',
+    dash_conc:'Koncentrationsrisiko · Top 10 positioner', dash_grade_cands:'🏅 AI-anbefalede grading-kandidater',
+    dash_insights:'Automatiske indsigter',
+    dash_best:'📈 Bedste positioner (P/L %)', dash_worst:'📉 Svageste positioner (P/L %)',
+    col_total_cost:'Total Kostpris', col_market:'Markedsværdi', col_total_pl:'Samlet P/L',
+    col_graded:'Graderede kort', col_sealed:'Sealed produkter', col_raw:'Raw kort',
+    col_ai_cov:'AI-analyseret', col_sell_ops:'Salgsmuligheder',
+    pl_cat:'P/L per kategori', alloc_cat:'Eksponering per kategori (markedsværdi)',
+    split_type:'Fordeling: Graderet / Sealed / Raw',
+    monthly_chart:'Månedlig kostpris (seneste 12 mdr.)',
+    score_dist:'Score-fordeling (1-10)', rec_dist:'Anbefalinger (AI)',
+    conc_name:'Navn', conc_type:'Type', conc_mkt:'Markedsværdi', conc_pct:'% af portef.',
+    grade_set:'Sæt', grade_rarity:'Raritet', grade_mkt:'Markedspris', grade_score:'AI-score',
+    insight_good_pl:'Samlet portefølje er', insight_result:'— stærkt resultat.',
+    insight_bad_pl:'— overvej rebalancering.',
+    insight_sell:'AI anbefaler at sælge', insight_sell2:'poster med en samlet markedsværdi på',
+    insight_grade:'raw kort er AI-anbefalet til grading — potentiel PSA 10-gevinst.',
+    insight_unanalysed:'poster mangler AI-analyse — klik "Analyser alle" på de respektive faner.',
+    insight_watchlist:'Du holder øje med', insight_watchlist2:'poster på din watchlist.',
+    insight_best_cat:'Bedste kategori målt på P/L:','insight_with':'med',
+    insight_conc:'Koncentrationsrisiko:', insight_conc2:'udgør','insight_of':'% af total porteføljeværdi.',
+    insight_no_ai:'Kør AI-analyse på dine poster for at se personlige indsigter.',
+    add_graded:'Tilføj grader kort', add_sealed:'Tilføj sealed produkt', add_raw:'Tilføj raw kort',
+    field_name:'Produktnavn *', field_set:'Sæt', field_cat:'Kategori', field_nr:'Kortnummer',
+    field_rarity:'Raritet', field_grade:'Grade', field_qty:'Antal', field_cond:'Stand',
+    field_cost:'Kostpris (DKK)', field_mkt:'Markedspris (DKK)', field_date:'Dato tilføjet', field_notes:'Noter',
+    save:'Gem', cancel:'Annullér', fill_name:'Udfyld venligst produktnavn.',
+    added_ok:'✅ Tilføjet:', deleted:'Slet denne post?',
+    footer:'Privat portfolio',
+    price_as_of:'Pr.',
+    score_label:'Score 7-10', score_mid:'Score 4-6', score_low:'Score 1-3',
+    rec_sell_badge:'📤 Sælg:', rec_hold_badge:'📦 Behold:', rec_grade_badge:'🏅 Grading:',
+    pct_coverage:'% dækning', samlet:'samlet',
+    graderet:'Graderet', sealed_t:'Sealed', raw_t:'Raw',
+    analysing_of:'poster...',
+    no_key_banner:'Ingen API-nøgle',
+  },
+  en:{
+    tab_overview:'📊 Overview', tab_graded:'🏅 Graded cards', tab_sealed:'📦 Sealed products', tab_raw:'🃏 Raw cards',
+    search_ph:'Search name, set, grade...',
+    upload_csv:'Upload CSV', add:'Add',
+    api_label:'🤖 Perplexity API Key', api_save:'Save key', api_no_key:'No key saved — analysis disabled', api_active:'✓ Key saved — AI analysis active', api_link:'Get API key →',
+    analyse_all:'Analyse all (AI)', analysing:'Analysing',
+    ai_analyse:'AI analysis', close:'Close', sources:'Sources', analysed:'Analysed', key_factor:'Key factor',
+    dim_pristrend:'Price trend', dim_eftersp:'Demand', dim_roi:'ROI potential',
+    dim_pristrend_tip:'Based on price history over the past 4 weeks — whether the price is rising, falling or stable on the secondary market.',
+    dim_eftersp_tip:'Based on search volume, trading activity and popularity in the collector community right now.',
+    dim_roi_tip:'Combined potential from grading premium, sealed appreciation and market development over 1-3 years.',
+    click_details:'Click for details',
+    sell:'Sell', hold:'Keep raw', grade:'Send to grading',
+    no_data:'No data yet', no_results:'No results',
+    upload_start:'Upload a CSV file to get started', clear_filter:'Clear filters or search',
+    delete_confirm:'Delete this entry?',
+    posts:'Entries', pcs:'pcs', cost:'Cost', market_val:'Market value', pl:'P/L', ai_analysed:'AI analysed', sell_ops:'Sell opportunities',
+    grade_cands:'Send to grading', watchlist:'Watchlist',
+    sort_name:'Name', sort_set:'Set', sort_score:'AI score', sort_val:'Market price', sort_pl:'P/L', sort_date:'Date', sort_qty:'Qty', sort_rarity:'Rarity', sort_cond:'Condition',
+    col_name:'Name', col_set:'Set', col_nr:'No.', col_rarity:'Rarity', col_grade:'Grade', col_cat:'Category', col_cost:'Cost', col_mkt:'Market price', col_cond:'Condition', col_ai:'🤖 AI analysis',
+    added:'Added',
+    empty_title:'No data yet',
+    analyse_btn:'🤖 Analyse', reanalyse:'↺',
+    saved_key:'✅ API key saved', no_key_entered:'❌ No key entered',
+    all_analysed:'✅ All entries already analysed',
+    batch_done:'✅ Batch analysis done',
+    analysis_done:'✅ Analysis done',
+    api_err:'❌ API error',
+    import_ok:'✅ Imported',
+    graded_s:'graded', sealed_s:'sealed', raw_s:'raw',
+    new_zero:'0 new',
+    dash_portfolio:'Portfolio overview', dash_cat:'Category & Allocation',
+    dash_monthly:'Capital spend over time', dash_ai:'AI insights', dash_top:'Top Performers',
+    dash_conc:'Concentration risk · Top 10 positions', dash_grade_cands:'🏅 AI-recommended grading candidates',
+    dash_insights:'Automatic insights',
+    dash_best:'📈 Best positions (P/L %)', dash_worst:'📉 Worst positions (P/L %)',
+    col_total_cost:'Total cost', col_market:'Market value', col_total_pl:'Total P/L',
+    col_graded:'Graded cards', col_sealed:'Sealed products', col_raw:'Raw cards',
+    col_ai_cov:'AI analysed', col_sell_ops:'Sell opportunities',
+    pl_cat:'P/L per category', alloc_cat:'Category exposure (market value)',
+    split_type:'Split: Graded / Sealed / Raw',
+    monthly_chart:'Monthly cost (last 12 months)',
+    score_dist:'Score distribution (1-10)', rec_dist:'Recommendations (AI)',
+    conc_name:'Name', conc_type:'Type', conc_mkt:'Market value', conc_pct:'% of portf.',
+    grade_set:'Set', grade_rarity:'Rarity', grade_mkt:'Market price', grade_score:'AI score',
+    insight_good_pl:'Overall portfolio is', insight_result:'— strong result.',
+    insight_bad_pl:'— consider rebalancing.',
+    insight_sell:'AI recommends selling', insight_sell2:'entries with total market value of',
+    insight_grade:'raw cards are AI-recommended for grading — potential PSA 10 upside.',
+    insight_unanalysed:'entries missing AI analysis — click "Analyse all" on the respective tabs.',
+    insight_watchlist:'You are watching', insight_watchlist2:'entries on your watchlist.',
+    insight_best_cat:'Best category by P/L:','insight_with':'with',
+    insight_conc:'Concentration risk:', insight_conc2:'accounts for','insight_of':'% of total portfolio value.',
+    insight_no_ai:'Run AI analysis on your entries to see personalised insights.',
+    add_graded:'Add graded card', add_sealed:'Add sealed product', add_raw:'Add raw card',
+    field_name:'Product name *', field_set:'Set', field_cat:'Category', field_nr:'Card number',
+    field_rarity:'Rarity', field_grade:'Grade', field_qty:'Qty', field_cond:'Condition',
+    field_cost:'Cost (DKK)', field_mkt:'Market price (DKK)', field_date:'Date added', field_notes:'Notes',
+    save:'Save', cancel:'Cancel', fill_name:'Please fill in the product name.',
+    added_ok:'✅ Added:', deleted:'Delete this entry?',
+    footer:'Private portfolio',
+    price_as_of:'As of',
+    score_label:'Score 7-10', score_mid:'Score 4-6', score_low:'Score 1-3',
+    rec_sell_badge:'📤 Sell:', rec_hold_badge:'📦 Keep:', rec_grade_badge:'🏅 Grade:',
+    pct_coverage:'% coverage', samlet:'total',
+    graderet:'Graded', sealed_t:'Sealed', raw_t:'Raw',
+    analysing_of:'entries...',
+    no_key_banner:'No API key',
+  },
+};
+// Fallback for other languages: use English keys
+['ja','ko','zh','de','fr','es','pt','it'].forEach(lang=>{
+  TRANSLATIONS[lang] = Object.assign({}, TRANSLATIONS['en']);
+});
+// Language-specific overrides for key UI terms
+Object.assign(TRANSLATIONS['de'], {
+  tab_overview:'📊 Übersicht', tab_graded:'🏅 Bewertete Karten', tab_sealed:'📦 Versiegelte Produkte', tab_raw:'🃏 Rohe Karten',
+  sell:'Verkaufen', hold:'Roh behalten', grade:'Zum Grading senden',
+  dim_pristrend:'Preistrend', dim_eftersp:'Nachfrage', dim_roi:'ROI-Potenzial',
+  dim_pristrend_tip:'Basierend auf der Preisentwicklung der letzten 4 Wochen.',
+  dim_eftersp_tip:'Basierend auf Handelsaktivität und Beliebtheit in der Sammlergemeinschaft.',
+  dim_roi_tip:'Kombiniertes Potenzial aus Grading-Prämie und Marktentwicklung über 1-3 Jahre.',
+  analyse_all:'Alle analysieren (KI)', ai_analyse:'KI-Analyse',
+  analyse_btn:'🤖 Analysieren',
+});
+Object.assign(TRANSLATIONS['fr'], {
+  tab_overview:'📊 Aperçu', tab_graded:'🏅 Cartes notées', tab_sealed:'📦 Produits scellés', tab_raw:'🃏 Cartes brutes',
+  sell:'Vendre', hold:'Conserver brut', grade:'Envoyer pour notation',
+  dim_pristrend:'Tendance prix', dim_eftersp:'Demande', dim_roi:'Potentiel ROI',
+  dim_pristrend_tip:'Basé sur l'historique des prix des 4 dernières semaines.',
+  dim_eftersp_tip:'Basé sur le volume d'échanges et la popularité dans la communauté de collectionneurs.',
+  dim_roi_tip:'Potentiel combiné de la prime de notation et de l'évolution du marché sur 1-3 ans.',
+  analyse_all:'Analyser tout (IA)', ai_analyse:'Analyse IA',
+  analyse_btn:'🤖 Analyser',
+});
+Object.assign(TRANSLATIONS['es'], {
+  tab_overview:'📊 Resumen', tab_graded:'🏅 Cartas graduadas', tab_sealed:'📦 Productos sellados', tab_raw:'🃏 Cartas brutas',
+  sell:'Vender', hold:'Mantener en bruto', grade:'Enviar a graduación',
+  dim_pristrend:'Tendencia precio', dim_eftersp:'Demanda', dim_roi:'Potencial ROI',
+  dim_pristrend_tip:'Basado en el historial de precios de las últimas 4 semanas.',
+  dim_eftersp_tip:'Basado en el volumen de intercambio y popularidad en la comunidad de coleccionistas.',
+  dim_roi_tip:'Potencial combinado de la prima de graduación y evolución del mercado en 1-3 años.',
+  analyse_all:'Analizar todo (IA)', ai_analyse:'Análisis IA',
+  analyse_btn:'🤖 Analizar',
+});
+Object.assign(TRANSLATIONS['ja'], {
+  tab_overview:'📊 概要', tab_graded:'🏅 グレード済みカード', tab_sealed:'📦 シール製品', tab_raw:'🃏 生カード',
+  sell:'売る', hold:'生のまま保持', grade:'グレーディングに送る',
+  dim_pristrend:'価格トレンド', dim_eftersp:'需要', dim_roi:'ROIポテンシャル',
+  dim_pristrend_tip:'過去4週間の価格推移に基づいています。',
+  dim_eftersp_tip:'取引量とコレクターコミュニティでの人気に基づいています。',
+  dim_roi_tip:'グレーディングプレミアム、封入品の値上がり、1〜3年の市場動向を組み合わせた潜在力。',
+  analyse_all:'全て分析 (AI)', ai_analyse:'AI分析',
+  analyse_btn:'🤖 分析',
+});
+Object.assign(TRANSLATIONS['ko'], {
+  tab_overview:'📊 개요', tab_graded:'🏅 등급 카드', tab_sealed:'📦 봉인 제품', tab_raw:'🃏 원본 카드',
+  sell:'판매', hold:'원본 보관', grade:'그레이딩 발송',
+  dim_pristrend:'가격 추세', dim_eftersp:'수요', dim_roi:'ROI 잠재력',
+  dim_pristrend_tip:'지난 4주간의 가격 기록을 기반으로 합니다.',
+  dim_eftersp_tip:'거래량과 수집가 커뮤니티의 인기도를 기반으로 합니다.',
+  dim_roi_tip:'그레이딩 프리미엄, 봉인 제품 가치 상승, 1-3년 시장 발전의 복합 잠재력.',
+  analyse_all:'전체 분석 (AI)', ai_analyse:'AI 분석',
+  analyse_btn:'🤖 분석',
+});
+Object.assign(TRANSLATIONS['zh'], {
+  tab_overview:'📊 总览', tab_graded:'🏅 评级卡牌', tab_sealed:'📦 密封产品', tab_raw:'🃏 原版卡牌',
+  sell:'出售', hold:'保持原状', grade:'送去评级',
+  dim_pristrend:'价格趋势', dim_eftersp:'需求', dim_roi:'ROI潜力',
+  dim_pristrend_tip:'基于过去4周的价格历史。',
+  dim_eftersp_tip:'基于交易量和收藏家社区的人气。',
+  dim_roi_tip:'评级溢价、密封品增值和1-3年市场发展的综合潜力。',
+  analyse_all:'分析全部 (AI)', ai_analyse:'AI分析',
+  analyse_btn:'🤖 分析',
+});
+Object.assign(TRANSLATIONS['pt'], {
+  tab_overview:'📊 Visão geral', tab_graded:'🏅 Cartas graduadas', tab_sealed:'📦 Produtos selados', tab_raw:'🃏 Cartas brutas',
+  sell:'Vender', hold:'Manter bruto', grade:'Enviar para grading',
+  dim_pristrend:'Tendência de preço', dim_eftersp:'Procura', dim_roi:'Potencial ROI',
+  dim_pristrend_tip:'Baseado no histórico de preços das últimas 4 semanas.',
+  dim_eftersp_tip:'Baseado no volume de negociações e popularidade na comunidade de colecionadores.',
+  dim_roi_tip:'Potencial combinado do prémio de grading e evolução do mercado em 1-3 anos.',
+  analyse_all:'Analisar tudo (IA)', ai_analyse:'Análise IA',
+  analyse_btn:'🤖 Analisar',
+});
+Object.assign(TRANSLATIONS['it'], {
+  tab_overview:'📊 Panoramica', tab_graded:'🏅 Carte graduate', tab_sealed:'📦 Prodotti sigillati', tab_raw:'🃏 Carte grezze',
+  sell:'Vendere', hold:'Tieni grezzo', grade:'Invia per grading',
+  dim_pristrend:'Tendenza prezzi', dim_eftersp:'Domanda', dim_roi:'Potenziale ROI',
+  dim_pristrend_tip:'Basato sulla cronologia dei prezzi delle ultime 4 settimane.',
+  dim_eftersp_tip:'Basato sul volume degli scambi e sulla popolarità nella comunità di collezionisti.',
+  dim_roi_tip:'Potenziale combinato del premio di grading e dell'evoluzione del mercato in 1-3 anni.',
+  analyse_all:'Analizza tutto (IA)', ai_analyse:'Analisi IA',
+  analyse_btn:'🤖 Analizza',
+});
+
+function t(key){ return (TRANSLATIONS[currentLang]||TRANSLATIONS['en'])[key] || TRANSLATIONS['en'][key] || key; }
+
+function setLang(lang){
+  currentLang = lang;
+  localStorage.setItem('pf_lang', lang);
+  document.getElementById('langSel').value = lang;
+  applyLang();
+  if(activeTab==='overview') renderDashboard(); else render();
+}
+
+function applyLang(){
+  // Tabs
+  document.getElementById('tab-overview').textContent = t('tab_overview');
+  document.getElementById('tab-graded').textContent   = t('tab_graded');
+  document.getElementById('tab-sealed').textContent   = t('tab_sealed');
+  document.getElementById('tab-raw').textContent      = t('tab_raw');
+  // Search
+  const si = document.getElementById('searchInput');
+  if(si) si.placeholder = t('search_ph');
+  // API banner
+  const al = document.querySelector('.api-key-label');
+  if(al) al.textContent = t('api_label');
+  const ask = document.querySelector('.btn-save-key');
+  if(ask) ask.textContent = t('api_save');
+  const ks = document.getElementById('keyStatus');
+  if(ks && !apiKey) ks.textContent = t('api_no_key');
+  const alink = document.querySelector('.api-banner a');
+  if(alink) alink.textContent = t('api_link');
+  // Batch button
+  const bb = document.getElementById('batchBtn');
+  if(bb) bb.childNodes[bb.childNodes.length-1].textContent = ' ' + t('analyse_all');
+  // Upload label
+  const ulbl = document.querySelector('.btn-primary .lbl');
+  if(ulbl) ulbl.textContent = t('upload_csv');
+  // Add button
+  const addlbl = document.querySelectorAll('.btn-primary .lbl')[1];
+  if(addlbl) addlbl.textContent = t('add');
+}
+
+// ═══════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════
 initApiKey();
-render();
+// Restore language
+document.getElementById('langSel').value = currentLang;
+applyLang();
+switchTab('overview');
 </script>
 </body>
 </html>
