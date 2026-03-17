@@ -323,30 +323,27 @@ tbody tr:hover .btn-del{opacity:1}
 .module-header:active{cursor:grabbing}
 .module-drag-handle{color:var(--faint);font-size:.85rem;flex-shrink:0;opacity:.6}
 .module-title{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex:1}
-/* Span-toggle knap i header */
-.module-span-btn{
-  width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;
-  border-radius:var(--radius-xs);color:var(--muted);transition:all var(--trans);flex-shrink:0;
-  font-size:.7rem;opacity:.7;
-}
-.module-span-btn:hover{background:var(--surface3);color:var(--text);opacity:1}
 .module-toggle{width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);color:var(--muted);transition:all var(--trans);flex-shrink:0;font-size:.8rem}
 .module-toggle:hover{background:var(--surface3);color:var(--text)}
 /* Body */
 .module-body{padding:.85rem 1rem;overflow-x:auto}
 .module-body.collapsed{display:none}
-/* Resize håndtag — højde */
+/* Resize håndtag — hjørne (nw-resize = diagonal begge retninger) */
 .module-resize{
-  position:absolute;bottom:0;left:0;right:0;
-  height:6px;cursor:ns-resize;
-  border-radius:0 0 var(--radius) var(--radius);
-  background:transparent;
-  transition:background .15s;
-  z-index:5;
+  position:absolute;bottom:0;right:0;
+  width:18px;height:18px;
+  cursor:nwse-resize;
+  border-radius:0 0 var(--radius) 0;
+  z-index:10;
+  display:flex;align-items:flex-end;justify-content:flex-end;
+  padding:2px 3px;
+  opacity:0;
+  transition:opacity .15s;
 }
-.module-resize:hover,.module-resize.resizing{background:color-mix(in srgb,var(--primary) 40%,transparent)}
-/* Resizable body højde */
-.module-body.resizable{overflow:hidden}
+.dash-module:hover .module-resize,.module-resize.resizing{opacity:1}
+.module-resize svg{pointer-events:none;color:var(--primary);opacity:.8}
+/* Resizable body overflow */
+.module-body.resizing-active{overflow:hidden}
 /* Mobile: én kolonne */
 @media(max-width:800px){
   #dashModules{grid-template-columns:1fr}
@@ -1485,7 +1482,7 @@ function applyDashLayout() {
   });
 }
 
-// Toggle modul span 1 ⇔ 2 kolonner
+// toggleSpan er ikke længere i brug (erstatter af corner-resize), beholdes til bagudkompatibilitet
 function toggleSpan(id) {
   const mod = document.querySelector(`.dash-module[data-module-id="${id}"]`);
   if(!mod) return;
@@ -1494,24 +1491,43 @@ function toggleSpan(id) {
   saveDashLayout();
 }
 
-// Resize modul højde ved at trække resize-handle
+// Resize modul både højde (vertikal) og bredde/span (horisontal) via hjørne-håndtag
 function startResize(e, id) {
   e.preventDefault();
+  const container = document.getElementById('dashModules');
   const mod = document.querySelector(`.dash-module[data-module-id="${id}"]`);
-  if(!mod) return;
+  if(!mod || !container) return;
   const body = mod.querySelector('.module-body');
   const handle = mod.querySelector('.module-resize');
   if(!body) return;
+
+  const startX = e.clientX;
   const startY = e.clientY;
   const startH = body.getBoundingClientRect().height;
+  const containerW = container.getBoundingClientRect().width;
+  const startSpan = mod.dataset.span || '1';
+
   if(handle) handle.classList.add('resizing');
+  body.classList.add('resizing-active');
+
   function onMove(ev) {
-    const newH = Math.max(80, startH + (ev.clientY - startY));
+    // Vertikal: ændr højde
+    const dy = ev.clientY - startY;
+    const newH = Math.max(80, startH + dy);
     body.style.height = newH + 'px';
-    body.style.overflow = 'hidden';
+
+    // Horisontal: skift til span 2 hvis trækker mere end 15% af containerbredden til højre
+    const dx = ev.clientX - startX;
+    const threshold = containerW * 0.15;
+    if(dx > threshold && mod.dataset.span !== '2') {
+      mod.dataset.span = '2';
+    } else if(dx < -threshold && mod.dataset.span !== '1') {
+      mod.dataset.span = '1';
+    }
   }
   function onUp() {
     if(handle) handle.classList.remove('resizing');
+    body.classList.remove('resizing-active');
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
     saveDashLayout();
@@ -1609,7 +1625,7 @@ function renderDashboard(){
 
   <!-- MODULE: KPIs -->
   <div class="dash-module" data-module-id="kpis" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-span-btn" onclick="toggleSpan('kpis')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('kpis')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-toggle" onclick="toggleModule('kpis')">－</button></div>
     <div class="module-body">
       <div class="kpi-grid">
         <div class="kpi"><div class="kpi-accent" style="background:var(--primary)"></div><div class="kpi-label">Total Kostpris</div><div class="kpi-value">${fmtDKK(totalCost)}</div><div class="kpi-sub">${totalItems} poster · ${totalQty} stk</div></div>
@@ -1622,12 +1638,12 @@ function renderDashboard(){
         <div class="kpi"><div class="kpi-accent" style="background:var(--orange)"></div><div class="kpi-label">Salgsmuligheder</div><div class="kpi-value" style="color:var(--orange)">${sellCandidates.length}</div><div class="kpi-sub">${fmtDKK(sellTotal)} samlet</div></div>
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'kpis')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'kpis')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   <!-- MODULE: Kategori & Fordeling -->
   <div class="dash-module" data-module-id="cat-charts" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-span-btn" onclick="toggleSpan('cat-charts')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('cat-charts')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-toggle" onclick="toggleModule('cat-charts')">－</button></div>
     <div class="module-body">
       <div class="charts-row">
         <div class="chart-card"><div class="chart-title">P/L per kategori</div><div class="chart-wrap"><canvas id="chartCatPL"></canvas></div></div>
@@ -1635,22 +1651,22 @@ function renderDashboard(){
         <div class="chart-card"><div class="chart-title">Fordeling: Graderet / Sealed / Raw</div><div class="chart-wrap-sm"><canvas id="chartTypeSplit"></canvas></div></div>
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'cat-charts')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'cat-charts')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   <!-- MODULE: Kapitalforbrug -->
   <div class="dash-module" data-module-id="monthly" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-span-btn" onclick="toggleSpan('monthly')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('monthly')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule('monthly')">－</button></div>
     <div class="module-body">
       <div class="chart-card"><div class="chart-title">Månedlig kostpris (seneste 12 mdr.)</div><div class="chart-wrap"><canvas id="chartMonthly"></canvas></div></div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'monthly')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'monthly')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   ${analysedCount>0?`
   <!-- MODULE: AI Indsigter -->
   <div class="dash-module" data-module-id="ai-insights" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-span-btn" onclick="toggleSpan('ai-insights')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('ai-insights')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-toggle" onclick="toggleModule('ai-insights')">－</button></div>
     <div class="module-body">
       <div class="charts-row">
         <div class="chart-card">
@@ -1672,13 +1688,13 @@ function renderDashboard(){
         <div class="chart-card"><div class="chart-title">Anbefalinger (AI)</div><div class="chart-wrap-sm"><canvas id="chartRec"></canvas></div></div>
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'ai-insights')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'ai-insights')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
   `:''}
 
   <!-- MODULE: Top Performers -->
   <div class="dash-module" data-module-id="top-performers" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-span-btn" onclick="toggleSpan('top-performers')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('top-performers')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-toggle" onclick="toggleModule('top-performers')">－</button></div>
     <div class="module-body">
       <div class="dash-two">
         <div class="chart-card">
@@ -1697,25 +1713,25 @@ function renderDashboard(){
         </div>
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'top-performers')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'top-performers')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   <!-- MODULE: Koncentrationsrisiko -->
   <div class="dash-module" data-module-id="concentration" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-span-btn" onclick="toggleSpan('concentration')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('concentration')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-toggle" onclick="toggleModule('concentration')">－</button></div>
     <div class="module-body">
       <table class="dash-table">
         <thead><tr><th>#</th><th>Navn</th><th>Type</th><th class="num">Markedsværdi</th><th class="num">% af portef.</th></tr></thead>
         <tbody>${top10.map((i,idx)=>{const pct=totalVal>0?(totV(i)/totalVal*100):0;const type=i.portfolioName?.toLowerCase().includes('graded')?'Graderet':i.portfolioName?.toLowerCase().includes('sealed')?'Sealed':'Raw';const barW=Math.max(4,pct/((totalVal>0?(totV(top10[0])/totalVal*100):1))*100);return `<tr><td class="muted" style="font-size:.72rem;font-weight:700">${idx+1}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,35))}</td><td><span class="pill pill-cat ${catClass(i.category)}" style="font-size:.65rem">${esc(i.category||'—')}</span></td><td class="num gold">${fmtDKK(totV(i))}</td><td class="num" style="min-width:100px"><div style="display:flex;align-items:center;gap:.4rem;justify-content:flex-end"><div style="width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="width:${barW}%;height:100%;background:var(--primary);border-radius:3px"></div></div><span>${pct.toFixed(1)}%</span></div></td></tr>`;}).join('')}</tbody>
       </table>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'concentration')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'concentration')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   ${gradeCandidates.length>0?`
   <!-- MODULE: Grading Kandidater -->
   <div class="dash-module" data-module-id="grading-cands" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-span-btn" onclick="toggleSpan('grading-cands')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('grading-cands')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-toggle" onclick="toggleModule('grading-cands')">－</button></div>
     <div class="module-body">
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">Estimerede PSA-værdier baseret på råpris × historiske præmier for kortets stand. <strong>Ikke finansiel rådgivning</strong> — brug som vejledning.</p>
       <div style="overflow-x:auto">
@@ -1753,24 +1769,24 @@ function renderDashboard(){
       </table>
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'grading-cands')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'grading-cands')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
   `:''}
 
   <!-- MODULE: Automatiske indsigter -->
   <div class="dash-module" data-module-id="auto-insights" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-span-btn" onclick="toggleSpan('auto-insights')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('auto-insights')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-toggle" onclick="toggleModule('auto-insights')">－</button></div>
     <div class="module-body">
       <div class="insight-list">${insights.map(i=>`<div class="insight-item ${i.cls}"><span class="insight-ico">${i.ico}</span><span>${i.txt}</span></div>`).join('')
       || '<div class="insight-item info"><span class="insight-ico">🤖</span><span>Kør AI-analyse på dine poster for at se personlige indsigter.</span></div>'}
       </div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'auto-insights')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'auto-insights')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   <!-- MODULE: LIVE MARKEDSPRISER -->
   <div class="dash-module" data-module-id="live-prices" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-span-btn" onclick="toggleSpan('live-prices')" title="Udvid/skrump">⇔</button><button class="module-toggle" onclick="toggleModule('live-prices')">-</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule('live-prices')">-</button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
         <div class="live-api-banner">
@@ -1787,7 +1803,7 @@ function renderDashboard(){
       </div>
       <div style="margin-top:.6rem;font-size:.68rem;color:var(--faint)">Kilde: <a href="https://tcgdex.dev" target="_blank" style="color:var(--teal)">TCGdex API</a> (Cardmarket EU data, opdateres dagligt) · <a href="https://www.cardmarket-api.com" target="_blank" style="color:var(--teal)">cardmarket-api.com</a> (DE/FR/ES/IT, kræver API-nøgle)</div>
     </div>
-    <div class="module-resize" onmousedown="startResize(event,'live-prices')" title="Træk for at ændre højde"></div>
+    <div class="module-resize" onmousedown="startResize(event,'live-prices')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   </div><!-- end #dashModules -->
