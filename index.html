@@ -229,7 +229,7 @@ tbody tr:hover .btn-del{opacity:1}
 
 /* ── Dashboard ── */
 /* ═══ DASHBOARD — fuld bredde, ingen sidemargener ═══ */
-.dash{display:none;width:100%;padding:.75rem 1rem 3rem;box-sizing:border-box}
+.dash{display:none;width:100%;padding:.75rem 1rem 3rem;box-sizing:border-box;overflow-x:hidden}
 .dash.visible{display:block}
 .dash-section{margin-bottom:1.25rem}
 .dash-section-title{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
@@ -250,8 +250,8 @@ tbody tr:hover .btn-del{opacity:1}
 .kpi-value.blue{color:var(--blue)}
 .kpi-value.teal{color:var(--teal)}
 /* Charts */
-.charts-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.75rem;margin-bottom:.25rem}
-.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem .85rem;min-width:0;display:flex;flex-direction:column}
+.charts-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.75rem;margin-bottom:.25rem;overflow:hidden;min-width:0}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:.75rem .85rem;min-width:0;max-width:100%;display:flex;flex-direction:column;overflow:hidden}
 .chart-title{font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.65rem}
 .chart-wrap{position:relative;flex:1;min-height:100px;height:200px}
 .chart-wrap-sm{position:relative;flex:1;min-height:80px;height:170px}
@@ -295,6 +295,9 @@ tbody tr:hover .btn-del{opacity:1}
   grid-template-columns:repeat(2,1fr);
   gap:.75rem;
   align-items:start;
+  width:100%;
+  min-width:0;
+  overflow:hidden;
 }
 /* Moduler der spanner fuld bredde */
 .dash-module[data-span="2"]{ grid-column:span 2 }
@@ -313,6 +316,8 @@ tbody tr:hover .btn-del{opacity:1}
   transition:box-shadow var(--trans),opacity .2s;
   position:relative;
   min-height:80px;
+  min-width:0;
+  max-width:100%;
 }
 .dash-module.dragging{opacity:.35;box-shadow:var(--shadow-lg);transform:rotate(.5deg)}
 .dash-module.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 30%,transparent)}
@@ -331,7 +336,7 @@ tbody tr:hover .btn-del{opacity:1}
 .module-toggle{width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);color:var(--muted);transition:all var(--trans);flex-shrink:0;font-size:.8rem}
 .module-toggle:hover{background:var(--surface3);color:var(--text)}
 /* Body */
-.module-body{padding:.85rem 1rem;overflow-x:auto}
+.module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0}
 .module-body.collapsed{display:none}
 /* Resize håndtag — hjørne (nw-resize = diagonal begge retninger) */
 .module-resize{
