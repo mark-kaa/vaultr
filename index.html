@@ -1572,12 +1572,29 @@ function renderDashboard(){
     if(recGroups.hasOwnProperty(a.recommendation)) recGroups[a.recommendation]++;
   });
 
-  // Category breakdown
+  // Category breakdown — perceptuelt adskilte farver
   const cats={}, catColors=[];
-  const catColorMap={'Pokémon':'#6366f1','Magic: The Gathering':'#22c55e','Yu-Gi-Oh!':'#eab308','Sports':'#3b82f6','Other':'#f97316'};
+  const CAT_PALETTE=['#e8b830','#3b82f6','#22c55e','#f43f5e','#f97316','#06b6d4','#a855f7','#84cc16','#ec4899','#14b8a6'];
+  const catColorMap={
+    'Pokémon':'#e8b830',
+    'Magic: The Gathering':'#22c55e',
+    'Yu-Gi-Oh!':'#f43f5e',
+    'Sports':'#3b82f6',
+    'One Piece':'#f97316',
+    'Riftbound':'#06b6d4',
+    'Other':'#a855f7',
+  };
+  let _catPIdx=0;
+  const _usedCatCols={};
   all.forEach(i=>{
     const c=i.category||'Andet';
-    if(!cats[c]){cats[c]={cost:0,val:0}; catColors.push(catColorMap[c]||'#8b5cf6');}
+    if(!cats[c]){
+      cats[c]={cost:0,val:0};
+      if(!_usedCatCols[c]){
+        _usedCatCols[c]=catColorMap[c]||CAT_PALETTE[_catPIdx++%CAT_PALETTE.length];
+      }
+      catColors.push(_usedCatCols[c]);
+    }
     cats[c].cost+=totC(i); cats[c].val+=totV(i);
   });
 
@@ -1841,7 +1858,7 @@ function renderDashboard(){
   // Type split doughnut
   dashCharts.typeSplit=new Chart(document.getElementById('chartTypeSplit'),{
     type:'doughnut',
-    data:{labels:['Graderet','Sealed','Raw'],datasets:[{data:[gTV,sTV,rTV],backgroundColor:[clrBlue+'cc',clrPurple+'cc',clrTeal+'cc'],borderColor:[clrBlue,clrPurple,clrTeal],borderWidth:1.5,hoverOffset:6}]},
+    data:{labels:['Graderet','Sealed','Raw'],datasets:[{data:[gTV,sTV,rTV],backgroundColor:['#3b82f6cc','#f97316cc','#22c55ecc'],borderColor:['#3b82f6','#f97316','#22c55e'],borderWidth:1.5,hoverOffset:6}]},
     options:{...chartDefaults,cutout:'58%',plugins:{...chartDefaults.plugins,tooltip:{callbacks:{label:ctx=>' '+fmtDKK(ctx.raw)+' ('+((totalVal>0?(ctx.raw/totalVal*100):0).toFixed(1))+'%)'}}}}
   });
 
