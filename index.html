@@ -500,14 +500,8 @@ tbody tr:hover .btn-del{opacity:1}
 <!-- TOOLBAR -->
 <div class="toolbar" id="toolbar"></div>
 
-<!-- BATCH ANALYSE BAR -->
-<div class="analyse-bar">
-  <button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" disabled>
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m17 7 5-5"/><path d="M17 2h5v5"/></svg>
-    Analyser alle (AI)
-  </button>
-  <div class="analyse-progress" id="analyseProgress"></div>
-</div>
+<!-- BATCH ANALYSE BAR (renderes nu inde i toolbar via render()) -->
+<div id="analyseProgressGlobal" style="display:none"></div>
 
 <!-- LIVE PRIS STATUS BAR -->
 <div style="max-width:1400px;margin:0 auto;padding:.35rem 1rem" id="liveStatusBar" style="display:none"></div>
@@ -980,7 +974,7 @@ function switchTab(tab){
   const isOverview = tab==='overview';
   document.getElementById('summaryBar').parentElement.style.display = isOverview?'none':'';
   document.getElementById('toolbar').style.display = isOverview?'none':'';
-  document.getElementById('analyseProgress').parentElement.style.display = isOverview?'none':'';
+  // analyse-bar er nu i toolbar — vises/skjules automatisk med toolbar
   document.getElementById('dashboardPanel').classList.toggle('visible', isOverview);
   document.getElementById('tablePanel').style.display = isOverview?'none':'';
   // Nulstæl progress-tekst ved tab-skift (undgår at gammel analyse-status vises på forkert tab)
@@ -1307,19 +1301,24 @@ async function runBatchAnalysis(){
   batchRunning = true;
   const batchTab = activeTab; // gem hvilken tab der startede analysen
   const tabLabel = batchTab==='graded'?'Graderede kort':batchTab==='sealed'?'Sealed':'Raw kort';
-  document.getElementById('batchBtn').disabled=true;
+  const batchBtnEl = document.getElementById('batchBtn'); if(batchBtnEl) batchBtnEl.disabled=true;
 
   const data = batchTab==='graded' ? gradedData : batchTab==='sealed' ? sealedData : rawData;
   const toAnalyse = data.filter(i=>!aiCache[i.id]);
-  if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; document.getElementById('batchBtn').disabled=false; return; }
+  if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; const bbz=document.getElementById('batchBtn'); if(bbz)bbz.disabled=false; return; }
 
   let done=0;
   const prog = document.getElementById('analyseProgress');
 
   // Hjælpefunktion: opdater kun progress hvis vi stadig er på den rigtige tab
   const updateProg = (html) => {
-    prog.innerHTML = html;
-    // Vis en lille indikator i tab-knappen hvis brugeren har skiftet væk
+    // Gem i global holder (overlever render() genopbygning af toolbar)
+    const globalProg = document.getElementById('analyseProgressGlobal');
+    if(globalProg) globalProg.innerHTML = html;
+    // Opdater synligt element hvis det findes (samme tab)
+    const visibleProg = document.getElementById('analyseProgress');
+    if(visibleProg) visibleProg.innerHTML = html;
+    // Vis gul kant på tab-knappen hvis brugeren er skiftet væk
     const tabBtn = document.getElementById('tab-'+batchTab);
     if(tabBtn && activeTab !== batchTab) {
       tabBtn.style.outline = '2px solid var(--primary)';
@@ -1343,7 +1342,7 @@ async function runBatchAnalysis(){
   }
 
   batchRunning=false;
-  document.getElementById('batchBtn').disabled=false;
+  const batchBtnEl2 = document.getElementById('batchBtn'); if(batchBtnEl2) batchBtnEl2.disabled=false;
   // Fjern tab-highlight
   const tabBtn = document.getElementById('tab-'+batchTab);
   if(tabBtn) tabBtn.style.outline = '';
@@ -1988,7 +1987,11 @@ function renderToolbar(data){
     :activeTab==='raw'
     ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="rarity">Raritet</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
     :`<option value="name">Navn</option><option value="set">Sæt</option><option value="qty">Antal</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option>`;
-  document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select>`;
+  const progHtml = batchRunning
+    ? `<div class="analyse-progress" id="analyseProgress" style="flex:1">${document.getElementById('analyseProgressGlobal').innerHTML}</div>`
+    : `<div class="analyse-progress" id="analyseProgress" style="flex:1"></div>`;
+  document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select><div class="tb-sep"></div><button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" ${apiKey?'':'disabled'}>` +
+    `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m17 7 5-5"/><path d="M17 2h5v5"/></svg> Analyser alle (AI)</button>`+progHtml;
   document.getElementById('sortSel').value=sortCol;
 }
 
