@@ -555,20 +555,40 @@ async function fetchTCGdex(item){
   const name = encodeURIComponent(rawName);
   const BASE = 'https://api.tcgdex.net/v2/en';
 
-  // Hjælper: hent fuldt kort og udtræk cardmarket pricing
+  // Hjælper: hent fuldt kort, udtræk cardmarket pricing + auto-raritet
   async function getFullCard(cardId){
     const r = await fetch(`${BASE}/cards/${cardId}`);
     if(!r.ok) return null;
     const d = await r.json();
     const cm = d.pricing?.cardmarket || d.markets?.cardmarket || null;
     if(!cm) return null;
-    return { id: d.id, name: d.name, cm, set: d.set?.name };
+    // Auto-raritet: opdater item i alle data-arrays hvis det ikke allerede er sat korrekt
+    const tcgRarity = d.rarity || null;
+    if(tcgRarity && (!item.rarity || item.rarity.toLowerCase()==='common' || item.rarity.toLowerCase()==='unknown' || item.rarity === '')){
+      item.rarity = tcgRarity;
+      // Gem tilbage i rætt array
+      const arr = gradedData.find(i=>i.id===item.id) ? gradedData
+                : sealedData.find(i=>i.id===item.id) ? sealedData
+                : rawData;
+      const idx = arr.findIndex(i=>i.id===item.id);
+      if(idx>=0){ arr[idx].rarity = tcgRarity; saveAll(); }
+    }
+    return { id: d.id, name: d.name, cm, set: d.set?.name, rarity: tcgRarity };
+  }
+
+  // Hjælper: hent første hit med pris fra en liste (parallelt for hastighed)
+  async function firstWithPrice(list, max=4){
+    const results = await Promise.allSettled(list.slice(0,max).map(c=>getFullCard(c.id)));
+    for(const r of results){
+      if(r.status==='fulfilled' && r.value) return r.value;
+    }
+    return null;
   }
 
   try{
     // 1) Søg med kortnummer hvis tilgængeligt
     if(item.cardNumber){
-      const r1 = await fetch(`${BASE}/cards?name=${name}&localId=${encodeURIComponent(item.cardNumber)}`);
+      const r1 = await fetch(`${BASE}/cards?name=${name}&localId=${encodeURIComponent(item.cardNumber)}`,{signal:AbortSignal.timeout(6000)});
       if(r1.ok){
         const list = await r1.json();
         if(Array.isArray(list) && list.length > 0){
@@ -577,33 +597,29 @@ async function fetchTCGdex(item){
         }
       }
     }
-    // 2) Søg på navn — prøv første kort med cardmarket data
-    const r2 = await fetch(`${BASE}/cards?name=${name}`);
+    // 2) Søg på navn — hent første 4 parallelt
+    const r2 = await fetch(`${BASE}/cards?name=${name}`,{signal:AbortSignal.timeout(6000)});
     if(r2.ok){
       const list2 = await r2.json();
       if(Array.isArray(list2) && list2.length > 0){
-        // Prøv de første 5 for at finde ét med pris
-        for(const c of list2.slice(0,5)){
-          const full = await getFullCard(c.id);
+        const full = await firstWithPrice(list2, 4);
+        if(full) return full;
+      }
+    }
+    // 3) Kortere navn som fallback (kun hvis navn er 3+ ord)
+    const words = rawName.split(' ');
+    if(words.length >= 3){
+      const shortName = encodeURIComponent(words.slice(0,2).join(' '));
+      const r3 = await fetch(`${BASE}/cards?name=${shortName}`,{signal:AbortSignal.timeout(6000)});
+      if(r3.ok){
+        const list3 = await r3.json();
+        if(Array.isArray(list3) && list3.length > 0){
+          const full = await firstWithPrice(list3, 3);
           if(full) return full;
         }
       }
     }
-    // 3) Søg med kortere navn (fjern parenteser og tillæg)
-    const shortName = encodeURIComponent(rawName.split(' ').slice(0,2).join(' '));
-    if(shortName !== name){
-      const r3 = await fetch(`${BASE}/cards?name=${shortName}`);
-      if(r3.ok){
-        const list3 = await r3.json();
-        if(Array.isArray(list3) && list3.length > 0){
-          for(const c of list3.slice(0,3)){
-            const full = await getFullCard(c.id);
-            if(full) return full;
-          }
-        }
-      }
-    }
-  } catch(e){ console.warn('TCGdex fejl:', e); }
+  } catch(e){ console.warn('TCGdex fejl:', e.name==='TimeoutError'?'timeout':e); }
   return null;
 }
 
