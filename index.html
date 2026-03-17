@@ -1427,6 +1427,18 @@ function renderDashboard(){
   // Grading candidates (raw only, AI score ≥ 7)
   const gradeCandidates = rawData.filter(i=>aiCache[i.id]&&(aiCache[i.id].overall_score>=7));
 
+  // ── Chart color constants (read from CSS variables) ──
+  const cs = getComputedStyle(document.documentElement);
+  const clrMuted  = cs.getPropertyValue('--muted').trim()   || '#6b7a99';
+  const clrBorder = cs.getPropertyValue('--border').trim()  || '#252d42';
+  const clrGreen  = cs.getPropertyValue('--green').trim()   || '#6daa45';
+  const clrRed    = cs.getPropertyValue('--red').trim()     || '#f87171';
+  const clrBlue   = cs.getPropertyValue('--blue').trim()    || '#60a5fa';
+  const clrPurple = cs.getPropertyValue('--purple').trim()  || '#a78bfa';
+  const clrTeal   = cs.getPropertyValue('--teal').trim()    || '#38bdf8';
+  const clrGold   = cs.getPropertyValue('--primary').trim() || '#e8b830';
+  const clrOrange = cs.getPropertyValue('--orange').trim()  || '#fb923c';
+
   // ── Build modular dashboard HTML ──
   document.getElementById('dashboardPanel').innerHTML = `
   <div id="dashModules">
