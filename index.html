@@ -1359,6 +1359,74 @@ function applyDashLayout() {
 function renderDashboard(){
   destroyCharts();
   const all = [...gradedData, ...sealedData, ...rawData];
+
+  // ── Pre-compute all dashboard variables ──
+  const totalCost = all.reduce((s,i)=>s+totC(i),0);
+  const totalVal  = all.reduce((s,i)=>s+totV(i),0);
+  const totalPL   = totalVal - totalCost;
+  const totalItems = all.length;
+  const totalQty  = all.reduce((s,i)=>s+i.quantity,0);
+  const plPct2    = totalCost>0?(totalPL/totalCost*100):0;
+  const plCls     = totalPL>=0?'green':'red';
+  const plStr     = (totalPL>=0?'+':'')+plPct2.toFixed(1)+'%';
+
+  // Per-category
+  const gTC=gradedData.reduce((s,i)=>s+totC(i),0), gTV=gradedData.reduce((s,i)=>s+totV(i),0);
+  const sTC=sealedData.reduce((s,i)=>s+totC(i),0), sTV=sealedData.reduce((s,i)=>s+totV(i),0);
+  const rTC=rawData.reduce((s,i)=>s+totC(i),0),    rTV=rawData.reduce((s,i)=>s+totV(i),0);
+
+  // Sell candidates
+  const sellCandidates = all.filter(i=>aiCache[i.id]&&aiCache[i.id].recommendation==='Sælg');
+  const sellTotal = sellCandidates.reduce((s,i)=>s+totV(i),0);
+
+  // AI stats
+  const analysedCount = all.filter(i=>aiCache[i.id]).length;
+  const scoreGroups = {'9-10':0,'7-8':0,'1-6':0};
+  const recGroups   = {'Sælg':0,'Behold råt':0,'Send til grading':0};
+  all.forEach(i=>{
+    const a=aiCache[i.id]; if(!a) return;
+    const s=a.overall_score||0;
+    if(s>=9) scoreGroups['9-10']++;
+    else if(s>=7) scoreGroups['7-8']++;
+    else scoreGroups['1-6']++;
+    if(recGroups.hasOwnProperty(a.recommendation)) recGroups[a.recommendation]++;
+  });
+
+  // Category breakdown
+  const cats={}, catColors=[];
+  const catColorMap={'Pokémon':'#6366f1','Magic: The Gathering':'#22c55e','Yu-Gi-Oh!':'#eab308','Sports':'#3b82f6','Other':'#f97316'};
+  all.forEach(i=>{
+    const c=i.category||'Andet';
+    if(!cats[c]){cats[c]={cost:0,val:0}; catColors.push(catColorMap[c]||'#8b5cf6');}
+    cats[c].cost+=totC(i); cats[c].val+=totV(i);
+  });
+
+  // Monthly spend
+  const monthly={}, monthKeys=[];
+  all.forEach(i=>{
+    if(!i.dateAdded) return;
+    const d=new Date(i.dateAdded), k=d.getFullYear()+'-'+(''+(d.getMonth()+1)).padStart(2,'0');
+    monthly[k]=(monthly[k]||0)+totC(i);
+  });
+  Object.keys(monthly).sort().slice(-12).forEach(k=>monthKeys.push(k));
+
+  // Top performers
+  const withPL = all.filter(i=>totC(i)>0);
+  const topGain = [...withPL].sort((a,b)=>plPct(b)-plPct(a)).slice(0,5);
+  const topLoss = [...withPL].sort((a,b)=>plPct(a)-plPct(b)).slice(0,5);
+  const top10   = [...all].sort((a,b)=>totV(b)-totV(a)).slice(0,10);
+
+  // Auto-insights
+  const insights = [];
+  if(totalPL>0) insights.push({cls:'pos',ico:'📈',txt:`Samlet portefølje op ${fmtDKK(totalPL)} (${plStr})`});
+  else if(totalPL<0) insights.push({cls:'neg',ico:'📉',txt:`Samlet portefølje ned ${fmtDKK(Math.abs(totalPL))} (${plStr})`});
+  if(sellCandidates.length>0) insights.push({cls:'warn',ico:'📤',txt:`${sellCandidates.length} poster anbefalet solgt — samlet ${fmtDKK(sellTotal)}`});
+  const topGradeCandidate = all.filter(i=>aiCache[i.id]&&aiCache[i.id].recommendation==='Send til grading').sort((a,b)=>totV(b)-totV(a))[0];
+  if(topGradeCandidate) insights.push({cls:'grade',ico:'🏅',txt:`Bedste grading-kandidat: ${topGradeCandidate.productName} (${fmtDKK(totV(topGradeCandidate))})`});
+
+  // Grading candidates (raw only, AI score ≥ 7)
+  const gradeCandidates = rawData.filter(i=>aiCache[i.id]&&(aiCache[i.id].overall_score>=7));
+
   // ── Build modular dashboard HTML ──
   document.getElementById('dashboardPanel').innerHTML = `
   <div id="dashModules">
