@@ -978,6 +978,8 @@ function switchTab(tab){
   document.getElementById('analyseProgress').parentElement.style.display = isOverview?'none':'';
   document.getElementById('dashboardPanel').classList.toggle('visible', isOverview);
   document.getElementById('tablePanel').style.display = isOverview?'none':'';
+  // Nulstæl progress-tekst ved tab-skift (undgår at gammel analyse-status vises på forkert tab)
+  if(!batchRunning) document.getElementById('analyseProgress').innerHTML = '';
   if(isOverview){ renderDashboard(); } else { render(); }
 }
 
@@ -1296,39 +1298,53 @@ async function runSingleAnalysis(itemId){
 
 async function runBatchAnalysis(){
   if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
-  if(batchRunning) return;
+  if(batchRunning){ showToast('⏳ En analyse kører allerede — vent til den er færdig'); return; }
   batchRunning = true;
+  const batchTab = activeTab; // gem hvilken tab der startede analysen
+  const tabLabel = batchTab==='graded'?'Graderede kort':batchTab==='sealed'?'Sealed':'Raw kort';
   document.getElementById('batchBtn').disabled=true;
 
-  const data = activeTab==='graded' ? gradedData : activeTab==='sealed' ? sealedData : rawData;
-  // Only items without cached analysis
+  const data = batchTab==='graded' ? gradedData : batchTab==='sealed' ? sealedData : rawData;
   const toAnalyse = data.filter(i=>!aiCache[i.id]);
   if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; document.getElementById('batchBtn').disabled=false; return; }
 
   let done=0;
   const prog = document.getElementById('analyseProgress');
-  prog.innerHTML = `Analyserer <span>0</span>/${toAnalyse.length} poster...`;
+
+  // Hjælpefunktion: opdater kun progress hvis vi stadig er på den rigtige tab
+  const updateProg = (html) => {
+    prog.innerHTML = html;
+    // Vis en lille indikator i tab-knappen hvis brugeren har skiftet væk
+    const tabBtn = document.getElementById('tab-'+batchTab);
+    if(tabBtn && activeTab !== batchTab) {
+      tabBtn.style.outline = '2px solid var(--primary)';
+    }
+  };
+
+  updateProg(`[${tabLabel}] Analyserer <span>0</span>/${toAnalyse.length} poster...`);
 
   for(const item of toAnalyse){
-    prog.innerHTML = `Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`;
+    updateProg(`[${tabLabel}] Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`);
     try{
       const result = await analyseItem(item);
       if(result){ aiCache[item.id]=result; saveAll(); }
     } catch(e){
       const msg=(e.message||'fejl').substring(0,60);
-      prog.innerHTML=`<span style="color:var(--red)">Fejl på "${esc(item.productName.substring(0,30))}": ${esc(msg)} — fortsætter...</span>`;
-      await new Promise(r=>setTimeout(r,2000)); // pause so user can read error
+      updateProg(`<span style="color:var(--red)">[${tabLabel}] Fejl på "${esc(item.productName.substring(0,30))}": ${esc(msg)} — fortsætter...</span>`);
+      await new Promise(r=>setTimeout(r,2000));
     }
     done++;
-    // Small delay to avoid rate limiting
     await new Promise(r=>setTimeout(r,800));
   }
 
   batchRunning=false;
   document.getElementById('batchBtn').disabled=false;
-  prog.innerHTML=`<span style="color:var(--green);font-weight:700">✓ ${done} analyser fuldført</span>`;
-  render();
-  showToast(`✅ Batch-analyse færdig: ${done} poster analyseret`);
+  // Fjern tab-highlight
+  const tabBtn = document.getElementById('tab-'+batchTab);
+  if(tabBtn) tabBtn.style.outline = '';
+  updateProg(`<span style="color:var(--green);font-weight:700">✓ [${tabLabel}] ${done} analyser fuldført</span>`);
+  if(activeTab === batchTab) render();
+  showToast(`✅ Batch-analyse færdig (${tabLabel}): ${done} poster analyseret`);
 }
 
 // ═══════════════════════════════════════════════════════
