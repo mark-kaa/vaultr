@@ -275,7 +275,7 @@ tbody tr:hover .btn-del{opacity:1}
 .score-bar-count{width:28px;text-align:right;font-weight:700;color:var(--text);flex-shrink:0}
 /* ── Modulerbart dashboard ── */
 .dash-modules{display:flex;flex-direction:column;gap:1rem}
-.dash-module{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;transition:box-shadow var(--trans),opacity .2s}
+.dash-module{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:visible;transition:box-shadow var(--trans),opacity .2s}
 .dash-module.dragging{opacity:.4;box-shadow:var(--shadow-lg)}
 .dash-module.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 30%,transparent)}
 .module-header{display:flex;align-items:center;gap:.5rem;padding:.6rem .9rem;background:var(--surface2);border-bottom:1px solid var(--border);cursor:grab;user-select:none}
@@ -284,7 +284,7 @@ tbody tr:hover .btn-del{opacity:1}
 .module-title{font-size:.72rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex:1}
 .module-toggle{width:1.6rem;height:1.6rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);color:var(--muted);transition:all var(--trans);flex-shrink:0;font-size:.8rem}
 .module-toggle:hover{background:var(--surface3);color:var(--text)}
-.module-body{padding:1rem 1.1rem}
+.module-body{padding:1rem 1.1rem;overflow-x:auto}
 .module-body.collapsed{display:none}
 
 /* ── PSA potentiale badges ── */
@@ -549,34 +549,58 @@ fetchEurRate();
 
 // ── TCGdex: hent kortdata + Cardmarket EU priser ──
 async function fetchTCGdex(item){
-  // TCGdex søger på kortnavn og sæt
-  const name  = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').trim());
-  const setId = (item.set||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  // TCGdex: list-endpoint returnerer kun id/name/image.
+  // Vi skal hente enkelt-kort via GET /v2/en/cards/{id} for at få pricing.cardmarket
+  const rawName = (item.productName||'').replace(/\s+PSA.*$/i,'').replace(/\s*\(JP\)\s*/i,'').trim();
+  const name = encodeURIComponent(rawName);
+  const BASE = 'https://api.tcgdex.net/v2/en';
+
+  // Hjælper: hent fuldt kort og udtræk cardmarket pricing
+  async function getFullCard(cardId){
+    const r = await fetch(`${BASE}/cards/${cardId}`);
+    if(!r.ok) return null;
+    const d = await r.json();
+    const cm = d.pricing?.cardmarket || d.markets?.cardmarket || null;
+    if(!cm) return null;
+    return { id: d.id, name: d.name, cm, set: d.set?.name };
+  }
+
   try{
-    // Prøv direkte søgning
-    const res = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${name}&localId=${encodeURIComponent(item.cardNumber||'')}`);
-    if(res.ok){
-      const data = await res.json();
-      if(Array.isArray(data) && data.length > 0){
-        // Tag det første hit med Cardmarket pris
-        const card = data.find(c => c.markets?.cardmarket) || data[0];
-        if(card?.markets?.cardmarket){
-          return {
-            id: card.id,
-            name: card.name,
-            cm: card.markets.cardmarket,
-            set: card.set?.name,
-          };
+    // 1) Søg med kortnummer hvis tilgængeligt
+    if(item.cardNumber){
+      const r1 = await fetch(`${BASE}/cards?name=${name}&localId=${encodeURIComponent(item.cardNumber)}`);
+      if(r1.ok){
+        const list = await r1.json();
+        if(Array.isArray(list) && list.length > 0){
+          const full = await getFullCard(list[0].id);
+          if(full) return full;
         }
       }
     }
-    // Fallback: søg kun på navn uden kortnummer
-    const res2 = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${name}`);
-    if(res2.ok){
-      const data2 = await res2.json();
-      if(Array.isArray(data2) && data2.length > 0){
-        const card = data2.find(c => c.markets?.cardmarket) || data2[0];
-        if(card?.markets?.cardmarket) return { id:card.id, name:card.name, cm:card.markets.cardmarket, set:card.set?.name };
+    // 2) Søg på navn — prøv første kort med cardmarket data
+    const r2 = await fetch(`${BASE}/cards?name=${name}`);
+    if(r2.ok){
+      const list2 = await r2.json();
+      if(Array.isArray(list2) && list2.length > 0){
+        // Prøv de første 5 for at finde ét med pris
+        for(const c of list2.slice(0,5)){
+          const full = await getFullCard(c.id);
+          if(full) return full;
+        }
+      }
+    }
+    // 3) Søg med kortere navn (fjern parenteser og tillæg)
+    const shortName = encodeURIComponent(rawName.split(' ').slice(0,2).join(' '));
+    if(shortName !== name){
+      const r3 = await fetch(`${BASE}/cards?name=${shortName}`);
+      if(r3.ok){
+        const list3 = await r3.json();
+        if(Array.isArray(list3) && list3.length > 0){
+          for(const c of list3.slice(0,3)){
+            const full = await getFullCard(c.id);
+            if(full) return full;
+          }
+        }
       }
     }
   } catch(e){ console.warn('TCGdex fejl:', e); }
@@ -1301,17 +1325,19 @@ function toggleModule(id) {
 }
 
 function initDragDrop() {
-  const container = document.getElementById('dashboardPanel');
+  // Brug #dashModules som direkte parent for drag-drop
+  const container = document.getElementById('dashModules') || document.getElementById('dashboardPanel');
   let dragSrc = null;
 
   container.querySelectorAll('.dash-module').forEach(module => {
-    const header = module.querySelector('.module-header');
-    header.addEventListener('dragstart', e => {
+    // Drag startes fra module-header (grab handle)
+    module.addEventListener('dragstart', e => {
       dragSrc = module;
       module.classList.add('dragging');
       e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', module.dataset.moduleId || '');
     });
-    header.addEventListener('dragend', () => {
+    module.addEventListener('dragend', () => {
       module.classList.remove('dragging');
       container.querySelectorAll('.dash-module').forEach(m => m.classList.remove('drag-over'));
       saveDashLayout();
@@ -1324,15 +1350,21 @@ function initDragDrop() {
         module.classList.add('drag-over');
       }
     });
+    module.addEventListener('dragleave', () => {
+      module.classList.remove('drag-over');
+    });
     module.addEventListener('drop', e => {
       e.preventDefault();
+      e.stopPropagation();
       if(dragSrc && dragSrc !== module) {
-        const allModules = [...container.querySelectorAll('.dash-module')];
+        const allModules = [...container.querySelectorAll(':scope > .dash-module')];
         const srcIdx = allModules.indexOf(dragSrc);
         const tgtIdx = allModules.indexOf(module);
         if(srcIdx < tgtIdx) container.insertBefore(dragSrc, module.nextSibling);
         else container.insertBefore(dragSrc, module);
         module.classList.remove('drag-over');
+        dragSrc = null;
+        saveDashLayout();
       }
     });
   });
@@ -1555,15 +1587,28 @@ function renderDashboard(){
           const ai=aiCache[i.id];
           const mults=getPSAMultipliers(i.condition);
           const rawP=totV(i);
-          const fmt=(m)=>m&&rawP?fmtDKK(rawP*m):'<span class="psa-na">—</span>';
+          // null = ikke mulig pga. kortets stand. undefined/0 = ingen multiplikator.
+          const fmt=(m,grade)=>{
+            if(m===undefined||m===null){
+              const condL=(i.condition||'').toLowerCase();
+              const isMP=condL.includes('moderately')||condL==='mp';
+              const isLP=condL.includes('lightly')||condL==='lp';
+              const isHP=condL.includes('heavily')||condL==='hp'||condL==='damaged';
+              if(isHP) return '<span class="psa-na" title="Ikke mulig — kort er for slidt til grading">N/A</span>';
+              if(isMP&&grade>=9) return '<span class="psa-na" title="Moderately Played når typisk kun PSA 7-8 i grading">N/A</span>';
+              if(isLP&&grade>=10) return '<span class="psa-na" title="Lightly Played når sjældent PSA 10">N/A</span>';
+              return '<span class="psa-na">—</span>';
+            }
+            return rawP?fmtDKK(rawP*m):'<span class="psa-na">—</span>';
+          };
           return '<tr>'
             +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="'+esc(i.productName)+'">'+esc(i.productName.substring(0,26))+'</td>'
             +'<td class="muted" style="font-size:.72rem">'+esc(i.set.substring(0,18))+'</td>'
             +'<td style="font-size:.72rem"><span class="pill" style="background:var(--surface2);color:var(--text);padding:.15rem .4rem;border-radius:.3rem;font-weight:600">'+esc(i.condition||'?')+'</span></td>'
             +'<td class="num gold">'+fmtDKK(rawP)+'</td>'
-            +'<td class="num" style="color:var(--blue)">'+fmt(mults?.psa8)+'</td>'
-            +'<td class="num" style="color:var(--green)">'+fmt(mults?.psa9)+'</td>'
-            +'<td class="num" style="color:var(--teal)">'+fmt(mults?.psa10)+'</td>'
+            +'<td class="num" style="color:var(--blue)">'+fmt(mults?.psa8,8)+'</td>'
+            +'<td class="num" style="color:var(--green)">'+fmt(mults?.psa9,9)+'</td>'
+            +'<td class="num" style="color:var(--teal)">'+fmt(mults?.psa10,10)+'</td>'
             +'<td class="num"><span class="score-badge score-grade" style="cursor:default">'+ai.overall_score+'/10</span></td>'
             +'</tr>';
         }).join('')}</tbody>
@@ -1957,7 +2002,34 @@ function openAddModal(){
     <div class="fg"><label>Produktnavn *</label><input id="mName"/></div>
     <div class="fg-row">
       <div class="fg"><label>Sæt</label><input id="mSet"/></div>
-      <div class="fg"><label>Kategori</label><select id="mCat"><option>Pokemon</option><option>One Piece</option><option>Magic: The Gathering</option><option>Riftbound</option></select></div>
+      <div class="fg"><label>Kategori</label><select id="mCat">
+        <optgroup label="Kortspil">
+          <option>Pokemon</option>
+          <option>Magic: The Gathering</option>
+          <option>Yu-Gi-Oh!</option>
+          <option>One Piece</option>
+          <option>Lorcana</option>
+          <option>Flesh and Blood</option>
+          <option>Dragon Ball Super</option>
+          <option>Digimon</option>
+          <option>Riftbound</option>
+          <option>Star Wars: Unlimited</option>
+          <option>MetaZoo</option>
+          <option>Warhammer 40K</option>
+        </optgroup>
+        <optgroup label="Sports">
+          <option>Football Cards</option>
+          <option>Basketball Cards</option>
+          <option>Baseball Cards</option>
+          <option>Soccer Cards</option>
+          <option>Formula 1 Cards</option>
+        </optgroup>
+        <optgroup label="Andet">
+          <option>Sealed Product</option>
+          <option>Accessories</option>
+          <option>Other</option>
+        </optgroup>
+      </select></div>
     </div>
     ${activeTab==='graded'?`
     <div class="fg-row">
@@ -1972,7 +2044,15 @@ function openAddModal(){
     </select></div>`:`
     <div class="fg-row">
       <div class="fg"><label>Antal</label><input id="mQty" type="number" min="1" value="1"/></div>
-      <div class="fg"><label>Stand</label><select id="mCond"><option>Near Mint</option><option>Light Play</option></select></div>
+      <div class="fg"><label>Stand</label><select id="mCond">
+        <option>Mint</option>
+        <option>Near Mint</option>
+        <option>Near Mint-Mint</option>
+        <option>Lightly Played</option>
+        <option>Moderately Played</option>
+        <option>Heavily Played</option>
+        <option>Damaged</option>
+      </select></div>
     </div>`}
     <div class="fg-row">
       <div class="fg"><label>Kostpris (DKK)</label><input id="mCost" type="number" min="0" step="0.01"/></div>
