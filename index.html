@@ -304,6 +304,44 @@ tbody tr:hover .btn-del{opacity:1}
 .progress-ring-wrap{display:flex;align-items:center;justify-content:center;gap:1.5rem;flex-wrap:wrap;padding:.5rem 0}
 .progress-ring-item{display:flex;flex-direction:column;align-items:center;gap:.35rem}
 .progress-ring-label{font-size:.72rem;color:var(--muted);font-weight:600;text-align:center}
+
+/* ── Live markedspris integration ── */
+.live-price-badge{display:inline-flex;align-items:center;gap:.3rem;padding:.15rem .5rem;border-radius:.35rem;font-size:.72rem;font-weight:700;background:color-mix(in srgb,var(--teal) 12%,var(--surface2));color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 30%,var(--border));cursor:default;transition:all var(--trans);white-space:nowrap}
+.live-price-badge.loading{opacity:.6;animation:pulse-badge 1.2s ease-in-out infinite}
+.live-price-badge.error{background:color-mix(in srgb,var(--red) 10%,var(--surface2));color:var(--muted);border-color:color-mix(in srgb,var(--red) 20%,var(--border))}
+@keyframes pulse-badge{0%,100%{opacity:.6}50%{opacity:1}}
+.btn-live{display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .5rem;border-radius:.35rem;font-size:.72rem;font-weight:600;background:color-mix(in srgb,var(--teal) 12%,var(--surface2));color:var(--teal);border:1px solid color-mix(in srgb,var(--teal) 28%,var(--border));transition:all var(--trans);white-space:nowrap}
+.btn-live:hover{background:color-mix(in srgb,var(--teal) 22%,var(--surface2))}
+.btn-live:disabled{opacity:.4;cursor:not-allowed}
+/* EU Price panel i AI detail row */
+.eu-price-panel{margin-top:.65rem;padding:.6rem .75rem;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid var(--border)}
+.eu-price-title{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:var(--teal);margin-bottom:.45rem;display:flex;align-items:center;gap:.4rem}
+.eu-price-grid{display:flex;flex-wrap:wrap;gap:.4rem}
+.eu-price-item{display:flex;flex-direction:column;align-items:center;padding:.3rem .55rem;background:var(--surface);border:1px solid var(--border);border-radius:.4rem;min-width:68px;text-align:center}
+.eu-price-flag{font-size:.9rem;line-height:1}
+.eu-price-country{font-size:.6rem;color:var(--muted);font-weight:700;margin:.05rem 0}
+.eu-price-val{font-size:.75rem;font-weight:800;color:var(--text)}
+.eu-price-trend{font-size:.62rem;margin-top:.05rem}
+.eu-price-trend.up{color:var(--green)}
+.eu-price-trend.down{color:var(--red)}
+.eu-price-trend.flat{color:var(--muted)}
+/* Cardmarket source badge */
+.cm-source{font-size:.65rem;color:var(--muted);margin-top:.35rem;display:flex;align-items:center;gap:.3rem}
+.cm-dot{width:6px;height:6px;border-radius:50%;background:var(--teal);flex-shrink:0}
+/* Live pris kolonne i tabel */
+.live-col{min-width:120px}
+/* API status banner for live data */
+.live-api-banner{display:flex;align-items:center;gap:.55rem;padding:.3rem .75rem;border-radius:var(--radius-sm);background:color-mix(in srgb,var(--teal) 8%,var(--surface2));border:1px solid color-mix(in srgb,var(--teal) 20%,var(--border));font-size:.73rem;color:var(--muted)}
+.live-api-banner .dot-live{width:6px;height:6px;border-radius:50%;background:var(--teal);animation:blink-live 2s ease-in-out infinite;flex-shrink:0}
+@keyframes blink-live{0%,100%{opacity:1}50%{opacity:.3}}
+/* Dashboard live priser modul */
+.live-status-row{display:flex;align-items:center;justify-content:space-between;padding:.45rem 0;border-bottom:1px solid color-mix(in srgb,var(--border) 50%,transparent);font-size:.8rem;gap:.5rem}
+.live-status-row:last-child{border-bottom:none}
+.live-status-name{flex:1;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:200px}
+.live-status-price{font-variant-numeric:tabular-nums;font-weight:700;color:var(--teal)}
+.live-status-change{font-size:.72rem;font-weight:700}
+.live-status-change.up{color:var(--green)}
+.live-status-change.down{color:var(--red)}
 </style>
 </head>
 <body>
@@ -364,6 +402,12 @@ tbody tr:hover .btn-del{opacity:1}
     <button class="btn-save-key" onclick="saveApiKey()">Gem nøgle</button>
     <span class="key-status" id="keyStatus">Ingen nøgle gemt — analyser er deaktiveret</span>
     <a href="https://www.perplexity.ai/settings/api" target="_blank" style="font-size:.73rem;color:var(--blue);text-decoration:underline">Hent API-nøgle →</a>
+    <span style="color:var(--border);margin:0 .25rem">|</span>
+    <span style="color:var(--teal);font-weight:700;font-size:.8rem;white-space:nowrap">🟢 CM API</span>
+    <input type="password" id="cmApiKeyInput" placeholder="cardmarket-api.com nøgle (valgfri)" autocomplete="off" style="max-width:220px;border-color:color-mix(in srgb,var(--teal) 35%,var(--border))"/>
+    <button class="btn-save-key" onclick="saveCMApiKey()" style="background:var(--teal)">Gem</button>
+    <span class="key-status" id="cmKeyStatus" style="color:var(--teal)"></span>
+    <a href="https://www.cardmarket-api.com" target="_blank" style="font-size:.73rem;color:var(--teal);text-decoration:underline;white-space:nowrap">DE/FR/ES/IT priser →</a>
   </div>
 </div>
 
@@ -391,6 +435,9 @@ tbody tr:hover .btn-del{opacity:1}
   </button>
   <div class="analyse-progress" id="analyseProgress"></div>
 </div>
+
+<!-- LIVE PRIS STATUS BAR -->
+<div style="max-width:1400px;margin:0 auto;padding:.35rem 1rem" id="liveStatusBar" style="display:none"></div>
 
 <!-- DASHBOARD -->
 <div class="dash" id="dashboardPanel"></div>
@@ -463,6 +510,320 @@ function saveApiKey(){
   document.getElementById('batchBtn').disabled = false;
   showToast(t('saved_key'));
   render();
+}
+function saveCMApiKey(){
+  const key = document.getElementById('cmApiKeyInput').value.trim();
+  if(!key){ showToast('Ingen CM API-nøgle indtastet'); return; }
+  localStorage.setItem('pf_cmapi_key', key);
+  document.getElementById('cmKeyStatus').textContent = '✓ Aktiv';
+  showToast('✅ Cardmarket API-nøgle gemt — DE/FR/ES/IT priser aktiveret');
+}
+function initCMApiKey(){
+  const k = localStorage.getItem('pf_cmapi_key');
+  if(k){
+    document.getElementById('cmApiKeyInput').value = k;
+    document.getElementById('cmKeyStatus').textContent = '✓ Aktiv';
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// LIVE MARKEDSPRIS — TCGdex + cardmarket-api.com
+// ═══════════════════════════════════════════════════════
+// Cache: { [itemId]: { tcgdex: {...}, cm: {...}, fetchedAt: timestamp } }
+let liveCache = JSON.parse(localStorage.getItem('pf_live_cache') || '{}');
+const LIVE_TTL = 3 * 60 * 60 * 1000; // 3 timer cache TTL
+
+function saveLiveCache(){
+  localStorage.setItem('pf_live_cache', JSON.stringify(liveCache));
+}
+
+// DKK konverteringskurs (opdateres ved app-load)
+let eurToDkk = 7.46; // fallback
+async function fetchEurRate(){
+  try{
+    const r = await fetch('https://api.frankfurter.app/latest?from=EUR&to=DKK');
+    if(r.ok){ const d=await r.json(); eurToDkk=d.rates?.DKK||7.46; }
+  } catch(e){ /* brug fallback */ }
+}
+fetchEurRate();
+
+// ── TCGdex: hent kortdata + Cardmarket EU priser ──
+async function fetchTCGdex(item){
+  // TCGdex søger på kortnavn og sæt
+  const name  = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').trim());
+  const setId = (item.set||'').toLowerCase().replace(/[^a-z0-9]/g,'');
+  try{
+    // Prøv direkte søgning
+    const res = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${name}&localId=${encodeURIComponent(item.cardNumber||'')}`);
+    if(res.ok){
+      const data = await res.json();
+      if(Array.isArray(data) && data.length > 0){
+        // Tag det første hit med Cardmarket pris
+        const card = data.find(c => c.markets?.cardmarket) || data[0];
+        if(card?.markets?.cardmarket){
+          return {
+            id: card.id,
+            name: card.name,
+            cm: card.markets.cardmarket,
+            set: card.set?.name,
+          };
+        }
+      }
+    }
+    // Fallback: søg kun på navn uden kortnummer
+    const res2 = await fetch(`https://api.tcgdex.net/v2/en/cards?name=${name}`);
+    if(res2.ok){
+      const data2 = await res2.json();
+      if(Array.isArray(data2) && data2.length > 0){
+        const card = data2.find(c => c.markets?.cardmarket) || data2[0];
+        if(card?.markets?.cardmarket) return { id:card.id, name:card.name, cm:card.markets.cardmarket, set:card.set?.name };
+      }
+    }
+  } catch(e){ console.warn('TCGdex fejl:', e); }
+  return null;
+}
+
+// ── cardmarket-api.com: EU land-specifikke priser (gratis tier: 100 req/dag) ──
+const CM_API_KEY = localStorage.getItem('pf_cmapi_key') || '';
+async function fetchCardmarketAPI(item){
+  if(!CM_API_KEY) return null; // kræver nøgle
+  const name = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').trim());
+  try{
+    const res = await fetch(`https://www.cardmarket-api.com/pokemon/cards?search=${name}`,{
+      headers: { 'x-rapidapi-key': CM_API_KEY, 'x-rapidapi-host': 'cardmarket-api.com' }
+    });
+    if(res.ok){
+      const d = await res.json();
+      const cards = d.data || d.cards || d;
+      if(Array.isArray(cards) && cards.length > 0) return cards[0];
+    }
+  } catch(e){ console.warn('CM API fejl:', e); }
+  return null;
+}
+
+// ── Hoved-funktion: hent live priser for et item ──
+async function fetchLivePrice(item){
+  const cid = item.id;
+  const cached = liveCache[cid];
+  if(cached && (Date.now()-cached.fetchedAt < LIVE_TTL)) return cached;
+
+  const [tcgdex, cmapi] = await Promise.allSettled([
+    fetchTCGdex(item),
+    fetchCardmarketAPI(item),
+  ]);
+
+  const result = {
+    fetchedAt: Date.now(),
+    tcgdex: tcgdex.status==='fulfilled' ? tcgdex.value : null,
+    cmapi:  cmapi.status==='fulfilled'  ? cmapi.value  : null,
+  };
+  liveCache[cid] = result;
+  saveLiveCache();
+  return result;
+}
+
+// ── Formatter: EUR → DKK vises i parentes ──
+function fmtEUR(eur){
+  if(!eur && eur!==0) return '—';
+  const dkk = (eur * eurToDkk).toFixed(0);
+  return `€${Number(eur).toFixed(2)} <span style="color:var(--muted);font-size:.62rem">(~${dkk} kr)</span>`;
+}
+function fmtEURsimple(eur){
+  if(!eur && eur!==0) return '—';
+  return `€${Number(eur).toFixed(2)}`;
+}
+
+// ── Render EU-prispanel til AI detail row ──
+function renderEUPricePanel(item){
+  const d = liveCache[item.id];
+  if(!d) return `
+    <div class="eu-price-panel">
+      <div class="eu-price-title">
+        <span class="cm-dot"></span> Cardmarket EU Live Priser
+        <button class="btn-live" onclick="loadLivePricePanel('${item.id}')" style="margin-left:auto">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><polyline points="12 6 12 12 16 14"/></svg>
+          Hent live pris
+        </button>
+      </div>
+      <div style="font-size:.75rem;color:var(--muted)">Klik for at hente aktuel Cardmarket pris via TCGdex API</div>
+    </div>`;
+
+  const cm = d.tcgdex?.cm;
+  const cma = d.cmapi;
+  if(!cm && !cma) return `
+    <div class="eu-price-panel">
+      <div class="eu-price-title"><span class="cm-dot"></span> Cardmarket EU Live Priser</div>
+      <div style="font-size:.75rem;color:var(--muted)">Ingen pris fundet — kort muligvis ikke i TCGdex database (One Piece, MTG, Riftbound har begrænset dækning)</div>
+      <button class="btn-live" style="margin-top:.4rem" onclick="loadLivePricePanel('${item.id}')">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 18 0 9 9 0 0 0-18 0"/><polyline points="12 6 12 12 16 14"/></svg>
+        Prøv igen
+      </button>
+    </div>`;
+
+  const ago = Math.round((Date.now()-d.fetchedAt)/60000);
+  const agoStr = ago < 2 ? 'Netop hentet' : ago < 60 ? `${ago} min. siden` : `${Math.round(ago/60)} t. siden`;
+
+  // TCGdex CM priser
+  let tcgHtml = '';
+  if(cm){
+    const avg = cm.averageSellPrice || cm.avg1 || cm.trendPrice;
+    const low = cm.lowPrice;
+    const t7  = cm.avg7;
+    const t30 = cm.avg30;
+    // Trend beregning
+    const trendPct = avg && t7 ? ((avg - t7) / t7 * 100) : null;
+    const trendCls = trendPct === null ? 'flat' : trendPct > 2 ? 'up' : trendPct < -2 ? 'down' : 'flat';
+    const trendTxt = trendPct === null ? '' : (trendPct > 0 ? '+' : '') + trendPct.toFixed(1) + '% vs 7d';
+    tcgHtml = `
+      <div class="eu-price-item">
+        <div class="eu-price-flag">🇪🇺</div>
+        <div class="eu-price-country">CM Avg</div>
+        <div class="eu-price-val">${fmtEURsimple(avg)}</div>
+        ${trendTxt ? `<div class="eu-price-trend ${trendCls}">${trendTxt}</div>` : ''}
+      </div>
+      ${low ? `<div class="eu-price-item"><div class="eu-price-flag">⬇️</div><div class="eu-price-country">Laveste</div><div class="eu-price-val">${fmtEURsimple(low)}</div></div>` : ''}
+      ${t7  ? `<div class="eu-price-item"><div class="eu-price-flag">📅</div><div class="eu-price-country">7-dages</div><div class="eu-price-val">${fmtEURsimple(t7)}</div></div>` : ''}
+      ${t30 ? `<div class="eu-price-item"><div class="eu-price-flag">📆</div><div class="eu-price-country">30-dages</div><div class="eu-price-val">${fmtEURsimple(t30)}</div></div>` : ''}`;
+  }
+
+  // cardmarket-api.com DE/FR/ES/IT priser
+  let cmApiHtml = '';
+  if(cma){
+    const countries = [
+      {flag:'🇩🇪', key:'de', label:'DE'},
+      {flag:'🇫🇷', key:'fr', label:'FR'},
+      {flag:'🇪🇸', key:'es', label:'ES'},
+      {flag:'🇮🇹', key:'it', label:'IT'},
+    ];
+    countries.forEach(c => {
+      const p = cma[`price_${c.key}`] || cma[c.key];
+      if(p) cmApiHtml += `<div class="eu-price-item"><div class="eu-price-flag">${c.flag}</div><div class="eu-price-country">${c.label}</div><div class="eu-price-val">${fmtEURsimple(p)}</div></div>`;
+    });
+  }
+
+  const hasPrices = tcgHtml || cmApiHtml;
+  return `
+    <div class="eu-price-panel">
+      <div class="eu-price-title">
+        <span class="cm-dot"></span>
+        Cardmarket EU Live Priser
+        <button class="btn-live" onclick="loadLivePricePanel('${item.id}')" style="margin-left:auto;font-size:.65rem;padding:.12rem .4rem">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
+          Opdatér
+        </button>
+      </div>
+      ${hasPrices ? `<div class="eu-price-grid">${tcgHtml}${cmApiHtml}</div>` : '<div style="font-size:.75rem;color:var(--muted)">Ingen priser tilgængelig</div>'}
+      <div class="cm-source">
+        <span class="cm-dot"></span>
+        Kilde: ${d.tcgdex?.name ? 'TCGdex (Cardmarket EU)' : 'cardmarket-api.com'} &middot; ${agoStr}
+        ${d.tcgdex?.set ? ` &middot; ${esc(d.tcgdex.set)}` : ''}
+      </div>
+    </div>`;
+}
+
+// ── Load og re-render EU panel for specifikt item ──
+async function loadLivePricePanel(itemId){
+  const allItems = [...gradedData, ...sealedData, ...rawData];
+  const item = allItems.find(i=>i.id===itemId);
+  if(!item) return;
+
+  // Invalider cache for dette item
+  delete liveCache[itemId];
+  saveLiveCache();
+
+  // Vis loading i panelet
+  const panel = document.querySelector(`.eu-panel-${itemId}`);
+  if(panel) panel.innerHTML = `<div class="eu-price-panel"><div class="eu-price-title"><span class="cm-dot" style="animation:blink-live 1s infinite"></span> Henter Cardmarket pris...</div></div>`;
+
+  await fetchLivePrice(item);
+
+  // Re-render hele detail row
+  const detailRow = document.getElementById('ai-detail-'+itemId);
+  if(detailRow){
+    const td = detailRow.querySelector('td');
+    const inner = td?.querySelector('.ai-detail-inner');
+    if(inner){
+      const euPanel = inner.querySelector('.eu-panel-wrap');
+      if(euPanel) euPanel.innerHTML = renderEUPricePanel(item);
+    }
+  }
+  showToast('✅ Live pris hentet: '+item.productName.substring(0,30));
+}
+
+// ── Byg live-pris kontekst til Perplexity prompt ──
+function buildLivePriceContext(item){
+  const d = liveCache[item.id];
+  if(!d) return '';
+  const cm = d.tcgdex?.cm;
+  if(!cm) return '';
+  const avg = cm.averageSellPrice || cm.avg1 || cm.trendPrice;
+  const low = cm.lowPrice;
+  const t7  = cm.avg7;
+  const t30 = cm.avg30;
+  if(!avg) return '';
+  const trendDir = avg && t7 ? (avg > t7*1.02 ? 'stigende' : avg < t7*0.98 ? 'faldende' : 'stabil') : 'ukendt';
+  return `
+
+**LIVE CARDMARKET EU-PRISER (TCGdex, opdateret for nylig):**
+- Cardmarket gennemsnitspris (EUR): €${Number(avg).toFixed(2)} (~${(avg*eurToDkk).toFixed(0)} DKK)
+${low ? `- Laveste pris (EUR): €${Number(low).toFixed(2)}` : ''}
+${t7  ? `- 7-dages gennemsnit: €${Number(t7).toFixed(2)}` : ''}
+${t30 ? `- 30-dages gennemsnit: €${Number(t30).toFixed(2)}` : ''}
+- Pristrend (7d): ${trendDir}
+Brug disse live data til at understøtte din prisanalyse og pristrend-score.`;
+}
+
+// ── Dashboard: render live-priser summary liste ──
+function renderLivePricesSummary(){
+  const allItems = [...gradedData, ...sealedData, ...rawData];
+  const withPrices = allItems.filter(i => liveCache[i.id]?.tcgdex?.cm);
+  if(withPrices.length === 0) return '<div style="font-size:.8rem;color:var(--muted)">Ingen live priser indlæst endnu.</div>';
+
+  const rows = withPrices.slice(0,15).map(item => {
+    const cm = liveCache[item.id].tcgdex.cm;
+    const avg = cm.averageSellPrice || cm.avg1 || cm.trendPrice;
+    const t7 = cm.avg7;
+    const trendPct = avg && t7 ? ((avg - t7) / t7 * 100) : null;
+    const trendCls = trendPct === null ? '' : trendPct > 2 ? 'up' : trendPct < -2 ? 'down' : 'flat';
+    const trendTxt = trendPct === null ? '' : (trendPct > 0 ? '+' : '') + trendPct.toFixed(1) + '%';
+    const dkk = avg ? Math.round(avg * eurToDkk) : 0;
+    return `<div class="live-status-row">
+      <div class="live-status-name" title="${esc(item.productName)}">${esc(item.productName.substring(0,40))}</div>
+      <div style="display:flex;align-items:center;gap:.5rem">
+        ${avg ? `<span class="live-status-price">€${Number(avg).toFixed(2)}</span><span style="font-size:.65rem;color:var(--muted)">(~${dkk}kr)</span>` : '<span style="color:var(--muted)">ingen pris</span>'}
+        ${trendTxt ? `<span class="live-status-change ${trendCls}">${trendTxt}</span>` : ''}
+      </div>
+    </div>`;
+  }).join('');
+  return `<div>${rows}</div>`;
+}
+
+// ── Load top 10 mest værdifulde kort og hent live priser ──
+async function loadTopLivePrices(){
+  const btn = document.getElementById('btnLoadTopPrices');
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">⟳</span> Henter...'; }
+
+  const allItems = [...gradedData, ...sealedData, ...rawData]
+    .filter(i => i.category?.toLowerCase().includes('pokemon') || i.category?.toLowerCase().includes('pokémon'))
+    .sort((a,b) => totV(b) - totV(a))
+    .slice(0, 10);
+
+  let loaded = 0;
+  for(const item of allItems){
+    try{
+      await fetchLivePrice(item);
+      loaded++;
+    } catch(e){ console.warn('Live pris fejl for', item.productName, e); }
+    // Lille pause for at respektere API rate limits
+    await new Promise(r => setTimeout(r, 300));
+  }
+
+  // Opdater dashboard-modulet
+  const container = document.getElementById('livePricesContainer');
+  if(container) container.innerHTML = renderLivePricesSummary();
+
+  if(btn){ btn.disabled=false; btn.innerHTML='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg> Opdatér'; }
+  showToast(`✅ ${loaded} live priser hentet fra Cardmarket EU`);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -682,11 +1043,14 @@ function buildPrompt(item){
     ? `"${recTranslations.sell}" | "${recTranslations.hold_sealed}"`
     : `"${recTranslations.sell}" | "${recTranslations.hold_raw}" | "${recTranslations.grade}"`;
 
+  const livePriceCtx = buildLivePriceContext(item);
+
   return `You are an expert in collectible card investment and market analysis, specializing in Pokémon TCG, One Piece TCG, Magic: The Gathering, and Riftbound.
 
 ${langNote}
 
 Analyze this collectible item and provide a structured investment recommendation:
+${livePriceCtx}
 
 **ITEM:**
 - Name: ${item.productName}
@@ -1139,6 +1503,27 @@ function renderDashboard(){
     </div>
   </div>
 
+  <!-- MODULE: LIVE MARKEDSPRISER -->
+  <div class="dash-module" data-module-id="live-prices" draggable="true">
+    <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule('live-prices')">-</button></div>
+    <div class="module-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
+        <div class="live-api-banner">
+          <span class="dot-live"></span>
+          TCGdex API (Cardmarket EU) · ${Object.keys(liveCache).length > 0 ? Object.keys(liveCache).length + ' priser cachet' : 'Ingen priser cachet endnu'}
+        </div>
+        <button class="btn-live" onclick="loadTopLivePrices()" id="btnLoadTopPrices" style="font-size:.75rem;padding:.25rem .65rem">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
+          Hent top 10 live priser
+        </button>
+      </div>
+      <div id="livePricesContainer">
+        ${Object.keys(liveCache).length > 0 ? renderLivePricesSummary() : `<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0">Klik 'Hent top 10 live priser' for at hente aktuelle Cardmarket EU-priser for dine mest værdifulde kort.</div>`}
+      </div>
+      <div style="margin-top:.6rem;font-size:.68rem;color:var(--faint)">Kilde: <a href="https://tcgdex.dev" target="_blank" style="color:var(--teal)">TCGdex API</a> (Cardmarket EU data, opdateres dagligt) · <a href="https://www.cardmarket-api.com" target="_blank" style="color:var(--teal)">cardmarket-api.com</a> (DE/FR/ES/IT, kræver API-nøgle)</div>
+    </div>
+  </div>
+
   </div><!-- end #dashModules -->
   `;
 
@@ -1351,6 +1736,7 @@ function renderAIDetailRow(item, colSpan){
       <div class="ai-scores-row">${dimsHtml}</div>
       <div class="ai-reasoning">${esc(ai.reasoning||'')}</div>
       ${ai.key_factor?`<div style="margin-top:.4rem;font-size:.75rem;font-weight:700;color:var(--muted)">${t('key_factor')}: <span style="color:var(--text)">${esc(ai.key_factor)}</span></div>`:''}
+      <div class="eu-panel-wrap eu-panel-${item.id}">${renderEUPricePanel(item)}</div>
       ${citations.length?`<div class="ai-sources">${t('sources')}: ${citations.map(c=>{try{return `<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`}catch(e){return esc(c)}}).join(' · ')}</div>`:''}
       ${ts?`<div class="ai-timestamp">${t('analysed')}: ${ts}</div>`:''}
     </div>
@@ -1850,6 +2236,7 @@ function applyLang(){
 // INIT
 // ═══════════════════════════════════════════════════════
 initApiKey();
+initCMApiKey();
 // Restore language
 document.getElementById('langSel').value = currentLang;
 applyLang();
