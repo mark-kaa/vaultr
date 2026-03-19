@@ -1,0 +1,22 @@
+{
+  "name": "Vaultr",
+  "short_name": "Vaultr",
+  "description": "TCG Portfolio & Investment Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d1117",
+  "theme_color": "#0ea5e9",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect width='192' height='192' rx='40' fill='%230d1117'/><path d='M96 16 L168 46 L168 106 Q168 154 96 180 Q24 154 24 106 L24 46 Z' stroke='%230ea5e9' stroke-width='10' fill='none' stroke-linejoin='round'/><path d='M64 72 L96 136 L128 72' stroke='%2322d3ee' stroke-width='14' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230d1117'/><path d='M256 40 L440 118 L440 278 Q440 400 256 460 Q72 400 72 278 L72 118 Z' stroke='%230ea5e9' stroke-width='24' fill='none' stroke-linejoin='round'/><path d='M168 190 L256 358 L344 190' stroke='%2322d3ee' stroke-width='36' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
