@@ -942,6 +942,7 @@ let sortCol   = 'name';
 let sortAsc   = true;
 let filterCat = 'Alle';
 let batchRunning = false;
+let batchTabRef = null; // hvilken tab kører batch-analyse lige nu
 
 // ═══════════════════════════════════════════════════════
 // THEME
@@ -1300,6 +1301,7 @@ async function runBatchAnalysis(){
   if(batchRunning){ showToast('⏳ En analyse kører allerede — vent til den er færdig'); return; }
   batchRunning = true;
   const batchTab = activeTab; // gem hvilken tab der startede analysen
+  batchTabRef = batchTab; // global reference til toolbar rendering
   const tabLabel = batchTab==='graded'?'Graderede kort':batchTab==='sealed'?'Sealed':'Raw kort';
   const batchBtnEl = document.getElementById('batchBtn'); if(batchBtnEl) batchBtnEl.disabled=true;
 
@@ -1308,7 +1310,7 @@ async function runBatchAnalysis(){
   if(toAnalyse.length===0){ showToast('✅ Alle poster er allerede analyseret'); batchRunning=false; const bbz=document.getElementById('batchBtn'); if(bbz)bbz.disabled=false; return; }
 
   let done=0;
-  const prog = document.getElementById('analyseProgress');
+  // (analyseProgress opdateres via updateProg() nedenfor)
 
   // Hjælpefunktion: opdater kun progress hvis vi stadig er på den rigtige tab
   const updateProg = (html) => {
@@ -1342,6 +1344,7 @@ async function runBatchAnalysis(){
   }
 
   batchRunning=false;
+  batchTabRef = null; // nulstil så toolbar ikke viser gammel status
   const batchBtnEl2 = document.getElementById('batchBtn'); if(batchBtnEl2) batchBtnEl2.disabled=false;
   // Fjern tab-highlight
   const tabBtn = document.getElementById('tab-'+batchTab);
@@ -1987,8 +1990,11 @@ function renderToolbar(data){
     :activeTab==='raw'
     ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="rarity">Raritet</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
     :`<option value="name">Navn</option><option value="set">Sæt</option><option value="qty">Antal</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option>`;
-  const progHtml = batchRunning
-    ? `<div class="analyse-progress" id="analyseProgress" style="flex:1">${document.getElementById('analyseProgressGlobal').innerHTML}</div>`
+  // Vis kun progress på den tab der faktisk kører analysen
+  const isAnalysingThisTab = batchRunning && (typeof batchTabRef !== 'undefined') && batchTabRef === activeTab;
+  const globalProgEl = document.getElementById('analyseProgressGlobal');
+  const progHtml = isAnalysingThisTab && globalProgEl
+    ? `<div class="analyse-progress" id="analyseProgress" style="flex:1">${globalProgEl.innerHTML}</div>`
     : `<div class="analyse-progress" id="analyseProgress" style="flex:1"></div>`;
   document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select><div class="tb-sep"></div><button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" ${apiKey?'':'disabled'}>` +
     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m17 7 5-5"/><path d="M17 2h5v5"/></svg> Analyser alle (AI)</button>`+progHtml;
