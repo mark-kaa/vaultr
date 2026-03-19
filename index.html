@@ -261,6 +261,36 @@ tbody tr:hover .btn-del{opacity:1}
 .ai-rec-hold{background:#e8b83022;color:var(--primary);border:1.5px solid #e8b83055}
 .ai-rec-grade{background:#0c7a8522;color:var(--teal);border:1.5px solid #0c7a8555}
 
+/* ── Detail tabs: RAW / GRADED / POP ── */
+.detail-tabs{display:flex;gap:.25rem;margin-bottom:.75rem;background:var(--surface2);border-radius:.45rem;padding:.2rem;width:fit-content}
+.detail-tab{padding:.22rem .75rem;border-radius:.3rem;font-size:.72rem;font-weight:700;cursor:pointer;color:var(--muted);transition:all var(--trans);letter-spacing:.03em;user-select:none;border:none;background:transparent}
+.detail-tab:hover{color:var(--text)}
+.detail-tab.active{background:var(--surface);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.18)}
+.detail-tab-content{display:none}
+.detail-tab-content.visible{display:block}
+/* GRADED grid */
+.graded-grid{display:flex;gap:.35rem;flex-wrap:wrap;margin-top:.4rem}
+.graded-grade-cell{display:flex;flex-direction:column;align-items:center;padding:.45rem .6rem;border-radius:.45rem;border:1px solid var(--border);background:var(--surface2);min-width:70px;transition:all var(--trans)}
+.graded-grade-cell.owned{border-color:var(--teal);background:color-mix(in srgb,var(--teal) 10%,var(--surface2));box-shadow:0 0 0 1.5px color-mix(in srgb,var(--teal) 35%,transparent)}
+.graded-grade-cell.owned .ggc-grade{color:var(--teal)}
+.ggc-grade{font-size:.78rem;font-weight:800;color:var(--muted);margin-bottom:.2rem}
+.ggc-price{font-size:.82rem;font-weight:800;color:var(--text)}
+.ggc-label{font-size:.58rem;color:var(--faint);margin-top:.1rem;text-align:center}
+.ggc-owned-tag{font-size:.58rem;font-weight:800;color:var(--teal);margin-top:.2rem;background:color-mix(in srgb,var(--teal) 15%,transparent);padding:.05rem .3rem;border-radius:999px}
+/* POP tab */
+.pop-panel{padding:.5rem 0}
+.pop-info-row{display:flex;align-items:center;gap:.5rem;margin-bottom:.5rem}
+.pop-grade-badge{font-size:1.4rem;font-weight:900;padding:.3rem .75rem;border-radius:.5rem;background:var(--surface2);border:1.5px solid var(--border);color:var(--text);line-height:1}
+.pop-meta{display:flex;flex-direction:column;gap:.2rem}
+.pop-provider{font-size:.75rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.pop-label{font-size:.82rem;font-weight:600;color:var(--text)}
+.pop-note{margin-top:.6rem;padding:.5rem .65rem;background:var(--surface2);border:1px solid var(--border);border-radius:.4rem;font-size:.72rem;color:var(--muted);line-height:1.6}
+.pop-note a{color:var(--blue)}
+/* Grade pill upgrade in table */
+.grade-pill-wrap{display:inline-flex;align-items:center;gap:.3rem;flex-wrap:nowrap}
+.grade-provider-pill{display:inline-flex;align-items:center;padding:.1rem .35rem;border-radius:999px;font-size:.62rem;font-weight:700;background:var(--surface2);color:var(--muted);border:1px solid var(--border);white-space:nowrap}
+.grade-score-pill{display:inline-flex;align-items:center;padding:.15rem .5rem;border-radius:999px;font-size:.7rem;font-weight:800;white-space:nowrap}
+
 /* ── Modal ── */
 .modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;display:none;align-items:center;justify-content:center;padding:1rem;backdrop-filter:blur(4px)}
 .modal-backdrop.open{display:flex}
@@ -823,6 +853,8 @@ let rawData     = JSON.parse(localStorage.getItem('pf_raw')     || '[]');
 // AI analyses: { [itemId]: { recommendation, score, reasoning, dimensions, timestamp } }
 let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
 let expandedRow = null; // currently expanded AI detail row id
+// Detail panel tab state: { [itemId]: 'raw'|'graded'|'pop' } — in-memory only
+const detailTabState = {};
 
 function saveAll(){
   // Altid gem lokalt som fallback
@@ -2578,6 +2610,193 @@ function startResize(e, id) {
   document.addEventListener('mouseup', onUp);
 }
 
+
+// ═══════════════════════════════════════════════════════
+// EVENT SPIKE TRACKER
+// ═══════════════════════════════════════════════════════
+
+const KNOWN_EVENTS = [
+  { date: '2026-03-28', name: 'Prismatic Evolutions reprint announcement expected', tcg: 'Pokemon', type: 'reprint' },
+  { date: '2026-04-11', name: 'Scarlet & Violet set rotation', tcg: 'Pokemon', type: 'rotation' },
+  { date: '2026-05-02', name: 'One Piece OP-10 release', tcg: 'One Piece', type: 'release' },
+  { date: '2026-06-06', name: 'Magic: The Gathering Aetherdrift release', tcg: 'Magic', type: 'release' },
+];
+
+function renderSpikeTracker() {
+  const now = new Date();
+  const today = now.toISOString().slice(0, 10);
+
+  // ── Timeline ──────────────────────────────────────────
+  const typeColors = {
+    release:  { bg: 'color-mix(in srgb,var(--teal) 15%,transparent)',  border: 'var(--teal)',    text: 'var(--teal)' },
+    reprint:  { bg: 'color-mix(in srgb,#f97316 15%,transparent)',       border: '#f97316',        text: '#f97316' },
+    rotation: { bg: 'color-mix(in srgb,var(--red) 15%,transparent)',    border: 'var(--red)',     text: 'var(--red)' },
+    ban:      { bg: 'color-mix(in srgb,var(--red) 15%,transparent)',    border: 'var(--red)',     text: 'var(--red)' },
+    default:  { bg: 'color-mix(in srgb,var(--muted) 15%,transparent)',  border: 'var(--muted)',   text: 'var(--muted)' },
+  };
+
+  const upcomingEvents = KNOWN_EVENTS
+    .map(ev => {
+      const evDate = new Date(ev.date);
+      const diffMs = evDate - now;
+      const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+      return { ...ev, daysLeft };
+    })
+    .filter(ev => ev.daysLeft >= -7) // show events up to 7 days past
+    .sort((a, b) => a.daysLeft - b.daysLeft);
+
+  const timelineHTML = upcomingEvents.map(ev => {
+    const c = typeColors[ev.type] || typeColors.default;
+    const countdownText = ev.daysLeft < 0
+      ? `<span style="color:var(--muted);font-size:.68rem">${Math.abs(ev.daysLeft)}d siden</span>`
+      : ev.daysLeft === 0
+        ? `<span style="color:var(--teal);font-weight:600;font-size:.68rem">I dag</span>`
+        : `<span style="color:${c.text};font-weight:600;font-size:.68rem">${ev.daysLeft}d</span>`;
+    return `<div style="display:flex;align-items:flex-start;gap:.55rem;padding:.45rem .55rem;border-radius:6px;background:${c.bg};border:1px solid ${c.border};margin-bottom:.35rem">
+      <div style="min-width:52px;text-align:center;padding-top:.05rem">${countdownText}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:.78rem;font-weight:600;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${ev.name}</div>
+        <div style="display:flex;gap:.4rem;margin-top:.18rem;align-items:center">
+          <span style="font-size:.65rem;background:${c.border};color:#fff;padding:.08rem .35rem;border-radius:3px;font-weight:700;letter-spacing:.03em;text-transform:uppercase">${ev.type}</span>
+          <span style="font-size:.65rem;color:var(--muted)">${ev.tcg}</span>
+          <span style="font-size:.65rem;color:var(--faint)">${ev.date}</span>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+
+  // ── Spike Cache ────────────────────────────────────────
+  let spikeCache = null;
+  try { spikeCache = JSON.parse(localStorage.getItem('pf_spike_cache') || 'null'); } catch(e) {}
+  const lastUpdated = spikeCache?.timestamp
+    ? (() => { const d = new Date(spikeCache.timestamp); return d.toLocaleDateString('da-DK', { day:'numeric', month:'short' }) + ' ' + d.toLocaleTimeString('da-DK', { hour:'2-digit', minute:'2-digit' }); })()
+    : null;
+
+  // ── AI Section ────────────────────────────────────────
+  const aiSectionHTML = !apiKey
+    ? `<div style="font-size:.78rem;color:var(--muted);padding:.5rem;text-align:center;border:1px dashed var(--border);border-radius:6px">Tilføj Perplexity API-nøgle for at aktivere AI-analyse</div>`
+    : `<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
+        <div style="font-size:.72rem;color:var(--muted)">${lastUpdated ? 'Sidst opdateret: ' + lastUpdated : 'Ingen analyse endnu'}</div>
+        <button class="btn-live" id="btnSpikeAnalyse" onclick="runSpikeAnalysis()" style="font-size:.72rem;padding:.22rem .55rem">
+          🔍 Analysér aktuelle spikes (AI)
+        </button>
+      </div>
+      <div id="spikeAnalysisResult" style="font-size:.78rem;color:var(--fg);line-height:1.55;white-space:pre-wrap;max-height:260px;overflow-y:auto;padding:.1rem 0">${spikeCache?.text ? escapeHtml(spikeCache.text) : '<span style="color:var(--faint)">Klik \'Analysér aktuelle spikes\' for at hente AI-drevet markedsanalyse baseret på din portefølje.</span>'}</div>`;
+
+  // ── Portfolio Impact ───────────────────────────────────
+  let portfolioImpactHTML = '';
+  if (spikeCache?.text) {
+    const allItems = [...gradedData, ...rawData, ...sealedData];
+    const mentioned = allItems.filter(item => {
+      const name = (item.productName || '').toLowerCase();
+      const text = spikeCache.text.toLowerCase();
+      // Match if any 3+ char word from the card name appears in the AI text
+      const words = name.split(/[\s\-\/]+/).filter(w => w.length >= 4);
+      return words.some(w => text.includes(w));
+    }).slice(0, 6);
+
+    if (mentioned.length > 0) {
+      const rows = mentioned.map(item => {
+        const val = (item.marketPrice || 0) * (item.quantity || 1);
+        const valStr = val > 0 ? val.toFixed(0) + ' DKK' : '–';
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:.28rem 0;border-bottom:1px solid var(--border)">
+          <span style="font-size:.76rem;color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:70%">${item.productName || '–'}</span>
+          <span style="font-size:.76rem;color:var(--teal);font-weight:600;white-space:nowrap">${valStr}</span>
+        </div>`;
+      }).join('');
+      portfolioImpactHTML = `<div style="margin-top:.75rem">
+        <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.35rem">Portefølje Impact</div>
+        ${rows}
+      </div>`;
+    }
+  }
+
+  return `
+    <div style="margin-bottom:.6rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Kommende Events</div>
+      ${upcomingEvents.length > 0 ? timelineHTML : '<div style="font-size:.78rem;color:var(--faint)">Ingen kommende events i listen.</div>'}
+    </div>
+    <div style="border-top:1px solid var(--border);padding-top:.65rem;margin-top:.2rem">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.45rem">AI Spike-analyse</div>
+      ${aiSectionHTML}
+    </div>
+    ${portfolioImpactHTML}
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+async function runSpikeAnalysis() {
+  if (!apiKey) { showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
+
+  const btn = document.getElementById('btnSpikeAnalyse');
+  const resultDiv = document.getElementById('spikeAnalysisResult');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spin">⟳</span> Analyserer...'; }
+  if (resultDiv) { resultDiv.innerHTML = '<span style="color:var(--muted)">Henter AI-analyse...</span>'; }
+
+  try {
+    const topCards = [...gradedData, ...rawData, ...sealedData]
+      .sort((a, b) => ((b.marketPrice || 0) * (b.quantity || 1)) - ((a.marketPrice || 0) * (a.quantity || 1)))
+      .slice(0, 15)
+      .map(i => i.productName + (i.set ? ' (' + i.set + ')' : ''));
+
+    const prompt = `You are a TCG investment analyst. Based on current market trends (March 2026), identify which of these cards in a collector's portfolio may be experiencing price spikes or are at risk of price drops due to recent events (set releases, tournament results, reprints, bans):
+
+Cards: ${topCards.join(', ')}
+
+For each notable movement, provide:
+1. Card name
+2. Event causing the spike/drop
+3. Direction: UP or DOWN
+4. Magnitude: LOW/MEDIUM/HIGH
+5. One-sentence reasoning
+
+Be concise. Focus on actionable investor intelligence, not collecting advice.`;
+
+    const resp = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'sonar',
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 800,
+        search_recency_filter: 'month',
+      })
+    });
+
+    if (!resp.ok) {
+      let errMsg = 'HTTP ' + resp.status;
+      try { const ed = await resp.json(); errMsg = ed?.error?.message || ed?.detail || errMsg; } catch(e2) {}
+      throw new Error(errMsg);
+    }
+
+    const data = await resp.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    if (!text) throw new Error('Tomt svar fra API');
+
+    // Cache result
+    const cacheObj = { text, timestamp: Date.now() };
+    localStorage.setItem('pf_spike_cache', JSON.stringify(cacheObj));
+
+    // Re-render spike tracker body
+    const body = document.getElementById('spikeTrackerBody');
+    if (body) { body.innerHTML = renderSpikeTracker(); }
+    showToast('✅ Spike-analyse opdateret');
+
+  } catch(e) {
+    const msg = e.message || 'Ukendt fejl';
+    showToast('❌ Spike-analyse fejl: ' + msg.substring(0, 80));
+    if (resultDiv) { resultDiv.innerHTML = '<span style="color:var(--red)">Fejl: ' + escapeHtml(msg) + '</span>'; }
+    if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Analysér aktuelle spikes (AI)'; }
+  }
+}
+
 function renderDashboard(){
   destroyCharts();
   const all = [...gradedData, ...sealedData, ...rawData];
@@ -2920,6 +3139,19 @@ function renderDashboard(){
     <div class="module-resize" onmousedown="startResize(event,'market-movers')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
+  <!-- MODULE: Event Spike Tracker -->
+  <div class="dash-module" data-module-id="spike-tracker" data-span="2" draggable="true">
+    <div class="module-header">
+      <span class="module-drag-handle">⠿</span>
+      <span class="module-title">⚡ Event Spike Tracker</span>
+      <button class="module-toggle" onclick="toggleModule('spike-tracker')">－</button>
+    </div>
+    <div class="module-body" id="spikeTrackerBody">
+      ${renderSpikeTracker()}
+    </div>
+    <div class="module-resize" onmousedown="startResize(event,'spike-tracker')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  </div>
+
   </div><!-- end #dashModules -->
   `;
 
@@ -3097,6 +3329,91 @@ function toggleDetail(id){
   render();
 }
 
+function switchDetailTab(itemId, tab) {
+  detailTabState[itemId] = tab;
+  // Update tab buttons
+  document.querySelectorAll('.detail-tab[data-item="'+itemId+'"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.tab === tab);
+  });
+  // Show/hide content panels
+  document.querySelectorAll('.detail-tab-content[data-item="'+itemId+'"]').forEach(pane => {
+    pane.classList.toggle('visible', pane.dataset.tab === tab);
+  });
+}
+
+function renderGradedGrid(item) {
+  const basePrice = totV(item);
+  if (!basePrice || basePrice <= 0) {
+    return '<div style="font-size:.75rem;color:var(--muted)">Ingen markedspris tilgængelig — kan ikke estimere grade-priser.</div>';
+  }
+  const condKey = (item.condition || 'mint').toLowerCase().trim();
+  const mults = PSA_MULTIPLIERS[condKey] || PSA_MULTIPLIERS['mint'];
+
+  const ownedScore = item.gradeScore ? parseFloat(item.gradeScore) : null;
+  const ownedProvider = (item.gradingProvider || '').toUpperCase();
+
+  const grades = [
+    { num: '10',  mult: mults.psa10, label: 'GEM-MT',   cls: 'psa10' },
+    { num: '9',   mult: mults.psa9,  label: 'MINT',     cls: 'psa9'  },
+    { num: '8',   mult: mults.psa8,  label: 'NM-MT',    cls: 'psa8'  },
+    { num: '7',   mult: (mults.psa8 ? mults.psa8 * 0.65 : null), label: 'NM', cls: '' },
+    { num: '6',   mult: (mults.psa8 ? mults.psa8 * 0.45 : null), label: 'EX-MT', cls: '' },
+  ];
+
+  const cells = grades.map(g => {
+    const isOwned = ownedScore !== null && Math.floor(ownedScore) === parseInt(g.num);
+    const priceHtml = g.mult
+      ? `<div class="ggc-price">${fmtDKK(basePrice * g.mult)}</div>`
+      : '<div class="ggc-price" style="color:var(--faint)">N/A</div>';
+    const ownedTag = isOwned ? `<div class="ggc-owned-tag">${ownedProvider || 'DIT KORT'}</div>` : '';
+    return `<div class="graded-grade-cell${isOwned ? ' owned' : ''}">
+      <div class="ggc-grade">${g.num}</div>
+      ${priceHtml}
+      <div class="ggc-label">${g.label}</div>
+      ${ownedTag}
+    </div>`;
+  }).join('');
+
+  const note = mults === PSA_MULTIPLIERS['mint'] && condKey !== 'mint'
+    ? `<div style="font-size:.65rem;color:var(--faint);margin-top:.4rem">* Stand ukendt — bruger Mint-multiplier som standard</div>`
+    : '';
+
+  return `
+    <div style="margin-bottom:.4rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Estimerede graderingspriser</div>
+    <div class="graded-grid">${cells}</div>
+    <div style="font-size:.62rem;color:var(--faint);margin-top:.5rem">Baseret på markedspris × historiske PSA-multiplikatorer (${esc(item.condition || 'Mint')} stand)</div>
+    ${note}`;
+}
+
+function renderPOPPanel(item) {
+  const provider = item.gradingProvider || '';
+  const score = item.gradeScore || '';
+  const label = item.gradeLabel || item.grade || '';
+  const grade = item.grade || '';
+
+  const gradeBadgeHtml = grade && grade !== 'Ungraded'
+    ? `<div class="pop-grade-badge">${esc(grade)}</div>`
+    : '<div class="pop-grade-badge" style="color:var(--faint)">-</div>';
+
+  const metaHtml = (provider || score || label) ? `
+    <div class="pop-meta">
+      ${provider ? `<div class="pop-provider">${esc(provider)}</div>` : ''}
+      ${score    ? `<div class="pop-label">Score: <strong>${esc(String(score))}</strong></div>` : ''}
+      ${label && label !== grade ? `<div style="font-size:.72rem;color:var(--muted)">${esc(label)}</div>` : ''}
+    </div>` : '';
+
+  const psaPopUrl = 'https://www.psacard.com/pop';
+
+  return `
+    <div class="pop-panel">
+      <div class="pop-info-row">${gradeBadgeHtml}${metaHtml}</div>
+      <div class="pop-note">
+        <strong>Population data</strong> kræver PSA API integration og er ikke tilgængelig i denne version.<br>
+        Se live pop-rapport direkte på <a href="${psaPopUrl}" target="_blank" rel="noopener">PSA Card Pop Report</a>.
+      </div>
+    </div>`;
+}
+
 function renderAIDetailRow(item, colSpan){
   const ai=aiCache[item.id];
   if(!ai||expandedRow!==item.id) return '';
@@ -3137,6 +3454,35 @@ function renderAIDetailRow(item, colSpan){
         onclick="this.parentElement.classList.toggle('card-thumb-zoomed')" title="Klik for at forstørre"/>
     </div>` : '';
 
+  // Determine default tab: if item is graded → 'graded', else → 'raw'
+  const isGradedItem = item.grade && item.grade !== 'Ungraded' && item.gradingProvider;
+  const defaultTab = detailTabState[item.id] || (isGradedItem ? 'graded' : 'raw');
+  detailTabState[item.id] = defaultTab;
+
+  // Tab button helper
+  const tabBtn = (tabId, label) =>
+    `<button class="detail-tab${defaultTab===tabId?' active':''}" data-item="${item.id}" data-tab="${tabId}" onclick="switchDetailTab('${item.id}','${tabId}')">${label}</button>`;
+
+  // RAW tab content: EU price panel (Cardmarket) + Price by Condition matrix
+  const rawTabContent = `
+    <div class="eu-panel-wrap eu-panel-${item.id}">${renderEUPricePanel(item)}</div>`;
+
+  // GRADED tab content
+  const gradedTabContent = renderGradedGrid(item);
+
+  // POP tab content
+  const popTabContent = renderPOPPanel(item);
+
+  const tabsHtml = `
+    <div class="detail-tabs">
+      ${tabBtn('raw', 'RAW')}
+      ${tabBtn('graded', 'GRADED')}
+      ${tabBtn('pop', 'POP')}
+    </div>
+    <div class="detail-tab-content${defaultTab==='raw'?' visible':''}" data-item="${item.id}" data-tab="raw">${rawTabContent}</div>
+    <div class="detail-tab-content${defaultTab==='graded'?' visible':''}" data-item="${item.id}" data-tab="graded">${gradedTabContent}</div>
+    <div class="detail-tab-content${defaultTab==='pop'?' visible':''}" data-item="${item.id}" data-tab="pop">${popTabContent}</div>`;
+
   return `<tr class="ai-detail-row"><td colspan="${colSpan}">
     <div class="ai-detail-inner ${cardImg ? 'has-card-img' : ''}">
       ${cardImgHtml}
@@ -3149,8 +3495,8 @@ function renderAIDetailRow(item, colSpan){
       <div class="ai-scores-row">${dimsHtml}</div>
       <div class="ai-reasoning">${esc(ai.reasoning||'')}</div>
       ${ai.key_factor?`<div style="margin-top:.4rem;font-size:.75rem;font-weight:700;color:var(--muted)">${t('key_factor')}: <span style="color:var(--text)">${esc(ai.key_factor)}</span></div>`:''}
-      <div class="eu-panel-wrap eu-panel-${item.id}">${renderEUPricePanel(item)}</div>
-      ${citations.length?`<div class="ai-sources">${t('sources')}: ${citations.map(c=>{try{return `<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`}catch(e){return esc(c)}}).join(' · ')}</div>`:''}
+      ${tabsHtml}
+      ${citations.length?`<div class="ai-sources" style="margin-top:.5rem">${t('sources')}: ${citations.map(c=>{try{return `<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`}catch(e){return esc(c)}}).join(' · ')}</div>`:''}
       ${ts?`<div class="ai-timestamp">${t('analysed')}: ${ts}</div>`:''}
       </div><!-- end ai-detail-main -->
     </div>
@@ -3194,7 +3540,7 @@ function renderTable(filtered){
         <td class="hide-mob"><div class="set-cell" title="${esc(item.set)}">${esc(item.set)}</div></td>
         <td class="muted hide-mob" style="font-size:.72rem">${esc(item.cardNumber)}</td>
         <td class="muted hide-mob" style="font-size:.72rem">${esc(item.rarity)}</td>
-        <td>${item.grade&&item.grade!=='Ungraded'?`<span class="pill ${gradeClass(item.grade)}">${esc(item.grade)}</span>`:'<span style="color:var(--muted)">—</span>'}</td>
+        <td>${item.grade&&item.grade!=='Ungraded'?`<span class="grade-pill-wrap">${item.gradingProvider?`<span class="grade-provider-pill">${esc(item.gradingProvider)}</span>`:''}<span class="grade-score-pill ${gradeClass(item.grade)}">${item.gradeScore!=null?esc(String(item.gradeScore))+(item.gradeLabel&&item.gradeLabel!==item.grade?' '+esc(item.gradeLabel):''):esc(item.grade)}</span></span>`:'<span style="color:var(--muted)">—</span>'}</td>
         <td class="hide-mob">${item.category?`<span class="pill pill-cat ${catClass(item.category)}">${esc(item.category)}</span>`:'—'}</td>
         <td class="num">${totC(item)>0?fmtDKK(totC(item)):'—'}</td>
         <td class="num gold">${totV(item)>0?fmtDKK(totV(item)):'—'}</td>
