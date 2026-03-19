@@ -183,6 +183,26 @@ tbody tr:hover .btn-del{opacity:1}
 .mover-chg{font-size:.72rem;font-weight:700;min-width:52px;text-align:right}
 .mover-chg.up{color:var(--green)}
 .mover-chg.down{color:var(--red)}
+
+/* ── Prishistorik sparkline ── */
+.price-history-panel{margin-top:.75rem;padding:.6rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:.5rem}
+.price-history-title{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
+.sparkline-wrap{position:relative;height:52px;width:100%}
+.sparkline-labels{display:flex;justify-content:space-between;font-size:.62rem;color:var(--faint);margin-top:.2rem}
+.sparkline-points{display:flex;align-items:flex-end;gap:3px;height:52px;width:100%}
+.sparkline-bar{flex:1;border-radius:2px 2px 0 0;min-height:3px;transition:opacity .15s}
+.sparkline-bar:hover{opacity:.75}
+/* ── Price by Condition ── */
+.pbc-panel{margin-top:.75rem;padding:.6rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:.5rem}
+.pbc-title{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
+.pbc-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:.35rem}
+.pbc-cell{background:var(--surface2);border:1px solid var(--border);border-radius:.4rem;padding:.4rem .5rem;text-align:center}
+.pbc-cond{font-size:.65rem;font-weight:700;color:var(--muted);margin-bottom:.2rem;text-transform:uppercase}
+.pbc-price{font-size:.82rem;font-weight:800;color:var(--text)}
+.pbc-dkk{font-size:.6rem;color:var(--faint);margin-top:.1rem}
+.pbc-cell.highlight{border-color:var(--primary);background:color-mix(in srgb,var(--primary) 8%,var(--surface2))}
+.pbc-cell.highlight .pbc-cond{color:var(--primary)}
+
 .ai-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
 .ai-detail-title{font-size:.8rem;font-weight:700;color:var(--purple)}
 .ai-detail-close{color:var(--muted);padding:.1rem .3rem;border-radius:.25rem;font-size:.75rem;transition:all var(--trans)}
@@ -846,6 +866,8 @@ function renderEUPricePanel(item){
         Kilde: ${d.tcgdex?.name ? 'TCGdex (Cardmarket EU)' : 'cardmarket-api.com'} &middot; ${agoStr}
         ${d.tcgdex?.set ? ` &middot; ${esc(d.tcgdex.set)}` : ''}
       </div>
+      ${renderPriceHistoryPanel(item)}
+      ${renderPriceByCondition(item)}
     </div>`;
 }
 
@@ -1032,6 +1054,116 @@ function renderMarketMovers(){
 
   return `<div class="market-movers-grid">${items}</div>
     <div style="font-size:.67rem;color:var(--faint);margin-top:.5rem">Prisændring vs. 7-dages CM gennemsnit</div>`;
+}
+
+
+// ── FEATURE A: Prishistorik sparkline (avg1/avg7/avg30/low/trend) ──
+function renderPriceHistoryPanel(item){
+  const d = liveCache[item.id];
+  if(!d?.tcgdex?.cm) return '';
+  const cm = d.tcgdex.cm;
+
+  // Datapunkter: low, avg30, avg7, avg1/current, trend
+  const points = [
+    { label:'Laveste', val: cm.lowPrice,          color:'#60a5fa' },
+    { label:'30d avg', val: cm.avg30,              color:'#a78bfa' },
+    { label:'7d avg',  val: cm.avg7,               color:'#fb923c' },
+    { label:'Nu',      val: cm.averageSellPrice || cm.avg1, color:'#e8b830' },
+    { label:'Trend',   val: cm.trendPrice,         color:'#34d399' },
+  ].filter(p => p.val != null && p.val > 0);
+
+  if(points.length < 2) return '';
+
+  const vals = points.map(p=>p.val);
+  const minV = Math.min(...vals);
+  const maxV = Math.max(...vals);
+  const range = maxV - minV || 1;
+
+  const bars = points.map(p => {
+    const h = Math.max(6, Math.round(((p.val - minV) / range) * 44) + 4);
+    const title = `${p.label}: €${Number(p.val).toFixed(2)}`;
+    return `<div class="sparkline-bar" style="height:${h}px;background:${p.color};flex:1" title="${title}"></div>`;
+  }).join('');
+
+  const labels = points.map(p => `<span>${p.label}</span>`).join('');
+
+  // Beregn %-ændring nu vs 7d
+  const cur = cm.averageSellPrice || cm.avg1;
+  const ref7 = cm.avg7;
+  const chgHtml = (cur && ref7)
+    ? (() => {
+        const pct = ((cur - ref7) / ref7 * 100);
+        const cls = pct > 0 ? 'color:var(--green)' : pct < 0 ? 'color:var(--red)' : 'color:var(--muted)';
+        const arrow = pct > 0 ? '↑' : pct < 0 ? '↓' : '→';
+        return `<span style="${cls};font-size:.72rem;font-weight:700;margin-left:auto">${arrow} ${(pct>0?'+':'')}${pct.toFixed(1)}% vs 7d</span>`;
+      })()
+    : '';
+
+  return `
+    <div class="price-history-panel">
+      <div class="price-history-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Prishistorik ${chgHtml}
+      </div>
+      <div class="sparkline-wrap">
+        <div class="sparkline-points">${bars}</div>
+      </div>
+      <div class="sparkline-labels">${labels}</div>
+    </div>`;
+}
+
+// ── FEATURE B: Price by Condition matrix ──
+// Cardmarket condition multipliers baseret på CM's officielle graderingsguide
+const CM_COND_MULT = {
+  'MT':  { label:'Mint',             mult:1.00, psa_equiv:'PSA 9-10' },
+  'NM':  { label:'Near Mint',        mult:0.80, psa_equiv:'PSA 8-9'  },
+  'EX':  { label:'Excellent',        mult:0.55, psa_equiv:'PSA 7-8'  },
+  'GD':  { label:'Good',             mult:0.35, psa_equiv:'PSA 6-7'  },
+  'LP':  { label:'Light Played',     mult:0.22, psa_equiv:'PSA 5-6'  },
+  'PL':  { label:'Played',           mult:0.12, psa_equiv:'PSA 4-5'  },
+  'PO':  { label:'Poor',             mult:0.06, psa_equiv:'PSA 1-3'  },
+};
+
+function renderPriceByCondition(item){
+  const d = liveCache[item.id];
+  if(!d?.tcgdex?.cm) return '';
+  const cm = d.tcgdex.cm;
+  const basePrice = cm.averageSellPrice || cm.avg1 || cm.trendPrice;
+  if(!basePrice) return '';
+
+  // Find kortets nuværende stand for at highlighte den relevante kolonne
+  const condRaw = (item.condition || '').toLowerCase();
+  const condMatchMap = { 'mint':'MT','near mint':'NM','nm':'NM','nm-mt':'NM','near mint-mint':'NM',
+    'excellent':'EX','ex':'EX','good':'GD','lightly played':'LP','lp':'LP',
+    'moderately played':'PL','mp':'PL','played':'PL','heavily played':'PO','hp':'PO','poor':'PO' };
+  const userCondKey = condMatchMap[condRaw] || null;
+
+  // Vis kun MT/NM/EX/GD/LP (top 5 mest relevante)
+  const showKeys = ['MT','NM','EX','GD','LP'];
+  const cells = showKeys.map(key => {
+    const c = CM_COND_MULT[key];
+    // Base price er NM-prisen fra CM, MT er ca. +25% over NM
+    const nmBase = basePrice;
+    const adjBase = key === 'MT' ? nmBase * 1.25 : nmBase;
+    const price = key === 'MT' ? adjBase : (nmBase * (c.mult / CM_COND_MULT['NM'].mult));
+    const dkk = Math.round(price * eurToDkk);
+    const isHighlight = key === userCondKey;
+    return `<div class="pbc-cell${isHighlight?' highlight':''}">
+      <div class="pbc-cond">${c.label}</div>
+      <div class="pbc-price">€${price.toFixed(2)}</div>
+      <div class="pbc-dkk">~${dkk} kr</div>
+      ${isHighlight ? '<div style="font-size:.58rem;color:var(--primary);margin-top:.1rem;font-weight:700">Dit kort</div>' : ''}
+    </div>`;
+  }).join('');
+
+  return `
+    <div class="pbc-panel">
+      <div class="pbc-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+        Pris efter stand <span style="font-size:.62rem;color:var(--faint);font-weight:400;margin-left:.3rem;text-transform:none">Baseret på CM NM-pris × stand-multiplikator</span>
+      </div>
+      <div class="pbc-grid">${cells}</div>
+    </div>`;
 }
 
 // ═══════════════════════════════════════════════════════
