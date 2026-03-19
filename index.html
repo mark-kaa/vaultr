@@ -1869,47 +1869,143 @@ function detectCategory(item){
   return 'raw';                                           // default: raw/watchlist
 }
 
+// ── CSV Import Modal ──
+let _pendingCSVFiles = null;
+let _pendingCSVParsed = null;
+
 function handleCSV(input){
-  const files=Array.from(input.files); let gAdd=0,sAdd=0,rAdd=0,pending=files.length;
-  files.forEach(file=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      const rows=parseCSV(e.target.result);
-      rows.forEach(row=>{
-        const item=csvRowToItem(row);
-        if(!item.productName) return;
-        const cat = detectCategory(item);
-        if(cat==='graded'){
-          const dup=gradedData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.grade===item.grade);
-          if(!dup){gradedData.push(item);gAdd++;}
-        } else if(cat==='sealed'){
-          const dup=sealedData.find(d=>d.productName===item.productName&&d.set===item.set);
-          if(!dup){sealedData.push(item);sAdd++;}
-        } else {
-          const dup=rawData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.set===item.set);
-          if(!dup){rawData.push(item);rAdd++;}
-        }
-      });
+  const files = Array.from(input.files);
+  if(!files.length) return;
+  input.value = '';
+
+  // Parse alle filer først
+  let pending = files.length;
+  const allRows = [];
+  files.forEach(file => {
+    const r = new FileReader();
+    r.onload = e => {
+      parseCSV(e.target.result).forEach(row => allRows.push(row));
       pending--;
-      if(pending===0){
-        saveAll();
-        // Bulk upsert alle nye items til cloud
-        const _allNew = [...gradedData,...sealedData,...rawData];
-        _allNew.forEach(it => {
-          const t = gradedData.find(x=>x.id===it.id)?'graded_items':sealedData.find(x=>x.id===it.id)?'sealed_items':'raw_items';
-          upsertItem(t, it);
-        });
-        const parts=[];
-        if(gAdd>0) parts.push(`${gAdd} graderede`);
-        if(sAdd>0) parts.push(`${sAdd} sealed`);
-        if(rAdd>0) parts.push(`${rAdd} raw`);
-        showToast('✅ Importeret: '+(parts.join(', ')||'0 nye'));
-        render();
-      }
+      if(pending === 0) showCSVImportModal(allRows, files.map(f=>f.name));
     };
-    r.readAsText(file,'UTF-8');
+    r.readAsText(file, 'UTF-8');
   });
-  input.value='';
+}
+
+function showCSVImportModal(rows, fileNames){
+  // Forhåndsvis hvad der ville blive importeret
+  let gCount=0, sCount=0, rCount=0;
+  const previewItems = rows.map(row => {
+    const item = csvRowToItem(row);
+    if(!item.productName) return null;
+    const cat = detectCategory(item);
+    if(cat==='graded') gCount++;
+    else if(cat==='sealed') sCount++;
+    else rCount++;
+    return { item, cat };
+  }).filter(Boolean);
+
+  const hasExisting = gradedData.length + sealedData.length + rawData.length > 0;
+
+  const modal = document.createElement('div');
+  modal.id = 'csvImportModal';
+  modal.style.cssText = 'position:fixed;inset:0;background:#00000090;z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)';
+  modal.innerHTML = `
+    <div style="background:var(--surface1);border:1px solid var(--border);border-radius:.75rem;padding:1.75rem;max-width:440px;width:90%;box-shadow:0 24px 60px #000a">
+      <div style="font-size:1.05rem;font-weight:700;margin-bottom:.5rem">📥 CSV Import</div>
+      <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem">${fileNames.join(', ')}</div>
+
+      <!-- Preview counts -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1.25rem">
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--blue)">${gCount}</div>
+          <div style="font-size:.7rem;color:var(--muted)">Graderede</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--purple)">${sCount}</div>
+          <div style="font-size:.7rem;color:var(--muted)">Sealed</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
+          <div style="font-size:1.3rem;font-weight:800;color:var(--green)">${rCount}</div>
+          <div style="font-size:.7rem;color:var(--muted)">Raw</div>
+        </div>
+      </div>
+
+      ${hasExisting ? `
+      <!-- Eksisterende data advarsel -->
+      <div style="background:#f8712015;border:1px solid #f8712040;border-radius:.45rem;padding:.75rem;margin-bottom:1rem;font-size:.78rem">
+        <div style="font-weight:700;color:var(--orange);margin-bottom:.25rem">⚠️ Du har allerede data i porteføljen</div>
+        <div style="color:var(--muted)">Vælg hvordan den nye CSV skal håndteres:</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:.5rem;margin-bottom:1.25rem">
+        <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.6rem;border-radius:.4rem;border:1px solid var(--border);background:var(--surface2)">
+          <input type="radio" name="csvMode" value="replace" style="margin-top:.2rem" checked>
+          <div>
+            <div style="font-size:.82rem;font-weight:700">Erstat al eksisterende data</div>
+            <div style="font-size:.72rem;color:var(--muted)">Din nuværende portefølje slettes og erstattes af CSV-filen — anbefalet ved komplet eksport fra Collectr</div>
+          </div>
+        </label>
+        <label style="display:flex;align-items:flex-start;gap:.6rem;cursor:pointer;padding:.6rem;border-radius:.4rem;border:1px solid var(--border);background:var(--surface2)">
+          <input type="radio" name="csvMode" value="merge">
+          <div>
+            <div style="font-size:.82rem;font-weight:700">Tilføj til eksisterende (merge)</div>
+            <div style="font-size:.72rem;color:var(--muted)">Nye poster tilføjes — duplikater springes over baseret på navn + kortnummer</div>
+          </div>
+        </label>
+      </div>
+      ` : ''}
+
+      <div style="display:flex;gap:.6rem;justify-content:flex-end">
+        <button onclick="document.getElementById('csvImportModal').remove()" style="padding:.45rem .9rem;border-radius:.4rem;border:1px solid var(--border);background:none;color:var(--muted);font-size:.82rem;cursor:pointer">Annuller</button>
+        <button onclick="executeCSVImport()" style="padding:.45rem .9rem;border-radius:.4rem;border:none;background:var(--primary);color:#000;font-weight:700;font-size:.82rem;cursor:pointer">Importer</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  _pendingCSVParsed = previewItems;
+}
+
+function executeCSVImport(){
+  const modal = document.getElementById('csvImportModal');
+  const modeEl = modal ? modal.querySelector('input[name="csvMode"]:checked') : null;
+  const mode = modeEl ? modeEl.value : 'replace';
+  const previewItems = _pendingCSVParsed || [];
+  modal && modal.remove();
+
+  if(mode === 'replace'){
+    gradedData.length = 0;
+    sealedData.length = 0;
+    rawData.length = 0;
+  }
+
+  let gAdd=0, sAdd=0, rAdd=0;
+  previewItems.forEach(({ item, cat }) => {
+    if(cat === 'graded'){
+      const dup = gradedData.find(d => d.productName===item.productName && d.cardNumber===item.cardNumber && d.grade===item.grade);
+      if(!dup){ gradedData.push(item); gAdd++; }
+    } else if(cat === 'sealed'){
+      const dup = sealedData.find(d => d.productName===item.productName && d.set===item.set);
+      if(!dup){ sealedData.push(item); sAdd++; }
+    } else {
+      const dup = rawData.find(d => d.productName===item.productName && d.cardNumber===item.cardNumber && d.set===item.set);
+      if(!dup){ rawData.push(item); rAdd++; }
+    }
+  });
+
+  saveAll();
+  // Cloud sync
+  const _allNew = mode === 'replace' ? [...gradedData,...sealedData,...rawData] : previewItems.map(p=>p.item);
+  _allNew.forEach(it => {
+    const t = gradedData.find(x=>x.id===it.id)?'graded_items':sealedData.find(x=>x.id===it.id)?'sealed_items':'raw_items';
+    upsertItem(t, it);
+  });
+
+  const parts = [];
+  if(gAdd>0) parts.push(`${gAdd} graderede`);
+  if(sAdd>0) parts.push(`${sAdd} sealed`);
+  if(rAdd>0) parts.push(`${rAdd} raw`);
+  const modeStr = mode === 'replace' ? ' (erstattet)' : ' (tilføjet)';
+  showToast('✅ ' + (parts.join(', ') || '0 nye') + modeStr);
+  render();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2303,6 +2399,28 @@ function toggleModule(id) {
   icon.textContent = body.classList.contains('collapsed') ? '＋' : '－';
   saveDashLayout();
 }
+function collapseAllModules() {
+  document.querySelectorAll('#dashModules .dash-module').forEach(mod => {
+    const body = mod.querySelector('.module-body');
+    const icon = mod.querySelector('.module-toggle');
+    if(body && !body.classList.contains('collapsed')) {
+      body.classList.add('collapsed');
+      if(icon) icon.textContent = '＋';
+    }
+  });
+  saveDashLayout();
+}
+function expandAllModules() {
+  document.querySelectorAll('#dashModules .dash-module').forEach(mod => {
+    const body = mod.querySelector('.module-body');
+    const icon = mod.querySelector('.module-toggle');
+    if(body && body.classList.contains('collapsed')) {
+      body.classList.remove('collapsed');
+      if(icon) icon.textContent = '－';
+    }
+  });
+  saveDashLayout();
+}
 
 function initDragDrop() {
   // Brug #dashModules som direkte parent for drag-drop
@@ -2548,6 +2666,11 @@ function renderDashboard(){
   // ── Build modular dashboard HTML ──
   document.getElementById('dashboardPanel').innerHTML = `
   <div id="dashModules">
+  <!-- DASHBOARD TOOLBAR -->
+  <div style="display:flex;align-items:center;justify-content:flex-end;gap:.5rem;padding:.4rem .2rem .6rem;border-bottom:1px solid var(--border);margin-bottom:.75rem">
+    <button onclick="collapseAllModules()" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:.35rem;padding:.25rem .6rem;cursor:pointer" title="Minimer alle moduler"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14"/></svg> Minimer alle</button>
+    <button onclick="expandAllModules()" style="display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:.35rem;padding:.25rem .6rem;cursor:pointer" title="Udvid alle moduler"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg> Udvid alle</button>
+  </div>
 
   <!-- MODULE: KPIs -->
   <div class="dash-module" data-module-id="kpis" data-span="2" draggable="true">
