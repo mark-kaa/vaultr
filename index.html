@@ -63,6 +63,8 @@ header{position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px s
 .btn-primary{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .85rem;border-radius:var(--radius);background:var(--primary);color:var(--primary-fg);font-weight:700;font-size:.82rem;flex-shrink:0;transition:opacity var(--trans)}
 .btn-primary:hover{opacity:.85}
 .btn-primary:disabled{opacity:.4;cursor:not-allowed}
+.btn-trade{display:inline-flex;align-items:center;gap:.35rem;padding:.4rem .75rem;border-radius:var(--radius);background:var(--surface2);color:var(--text);font-weight:600;font-size:.82rem;flex-shrink:0;border:1px solid var(--border);transition:background var(--trans),border-color var(--trans)}
+.btn-trade:hover{background:var(--surface3,#2a2a3a);border-color:var(--teal);color:var(--teal)}
 .lbl{display:none}
 @media(min-width:520px){.lbl{display:inline}}
 
@@ -535,6 +537,10 @@ tbody tr:hover .btn-del{opacity:1}
       </button>
     </div>
     <div class="spacer"></div>
+    <button class="btn-trade" onclick="openTradeAnalyzer()" title="Trade Analyzer">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
+      <span class="lbl">Trade</span>
+    </button>
     <label class="btn-primary" style="cursor:pointer" title="Upload CSV">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       <span class="lbl">Upload CSV</span>
@@ -1637,20 +1643,7 @@ function renderTradeVerdict(){
   verdictEl.innerHTML = `<div class="trade-verdict ${cls}">${icon} ${txt}${aiFactor}</div>`;
 }
 
-// Tilføj Trade Analyzer knap i header
-document.addEventListener('DOMContentLoaded', ()=>{
-  // Tilføj trade knap til header
-  const hdr = document.querySelector('.hdr .spacer');
-  if(hdr){
-    const btn = document.createElement('button');
-    btn.className='btn-icon';
-    btn.title='Trade Analyzer';
-    btn.style.cssText='margin-right:.25rem;font-size:.8rem;padding:.25rem .55rem;display:flex;align-items:center;gap:.3rem;color:var(--muted);border:1px solid var(--border);border-radius:.4rem;background:var(--surface2)';
-    btn.innerHTML='⚖️ <span style="font-size:.75rem;font-weight:700">Trade</span>';
-    btn.onclick=openTradeAnalyzer;
-    hdr.insertAdjacentElement('afterend', btn);
-  }
-});
+// Trade-knap er nu i HTML direkte (ikke dynamisk injiceret)
 
 
 // ════════════════════════════════════════════════════════
