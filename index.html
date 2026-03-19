@@ -2020,11 +2020,17 @@ function showCSVImportModal(rows, fileNames){
 }
 
 async function executeCSVImport(){
+  try {
   const modal = document.getElementById('csvImportModal');
   const modeEl = modal ? modal.querySelector('input[name="csvMode"]:checked') : null;
   const mode = modeEl ? modeEl.value : 'replace';
   const previewItems = _pendingCSVParsed || [];
   modal && modal.remove();
+
+  if(!previewItems.length){
+    showToast('⚠️ Ingen data at importere — prøv at uploade CSV-filen igen');
+    return;
+  }
 
   // Vis loading-toast med det samme
   showToast('⏳ Importerer... vent venligst');
@@ -2088,6 +2094,11 @@ async function executeCSVImport(){
   const modeStr = mode === 'replace' ? ' (erstattet)' : ' (tilføjet)';
   showToast('✅ ' + (parts.join(', ') || '0 nye') + modeStr);
   render();
+  } catch(importErr) {
+    console.error('Import fejl:', importErr);
+    showToast('❌ Import fejl: ' + (importErr.message || String(importErr)));
+    render(); // render alligevel så data vises hvis noget kom igennem
+  }
 }
 
 // ═══════════════════════════════════════════════════════
