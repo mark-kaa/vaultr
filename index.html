@@ -810,10 +810,13 @@ async function loadFromSupabase() {
     localStorage.setItem('pf_raw',      JSON.stringify(rawData));
     localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
     showSync(false);
-    showToast('✅ Data hentet fra cloud');
+    const total = gradedData.length + sealedData.length + rawData.length;
+    if(total > 0) showToast('\u2705 ' + total + ' poster hentet fra cloud');
+    render(); // ALTID render efter cloud-load, også ved tom database
   } catch(e) {
     console.error('Supabase load fejl:', e);
     showSync('error','Sync fejl');
+    render(); // render alligevel så UI ikke hænger
   }
 }
 
