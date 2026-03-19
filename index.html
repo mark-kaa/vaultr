@@ -2023,13 +2023,16 @@ async function executeCSVImport(){
   const previewItems = _pendingCSVParsed || [];
   modal && modal.remove();
 
+  // Vis loading-toast med det samme
+  showToast('⏳ Importerer... vent venligst');
+
   if(mode === 'replace'){
     // 1) Ryd lokalt
     gradedData.length = 0;
     sealedData.length = 0;
     rawData.length = 0;
-    // 2) Ryd cloud (vent på det er færdig før vi uploader nyt)
-    await clearAllCloudData();
+    // 2) Ryd cloud kun hvis logget ind
+    if(supaUser && supa) await clearAllCloudData();
   }
 
   let gAdd=0, sAdd=0, rAdd=0, wSkip=0;
@@ -2047,7 +2050,7 @@ async function executeCSVImport(){
     }
   });
 
-  // Gem lokalt
+  // Gem lokalt ALTID (virker også uden login)
   saveAll();
 
   // Cloud sync — batch upsert (3 kald i stedet for ét per item)
@@ -2069,8 +2072,10 @@ async function executeCSVImport(){
         if(e3) console.warn('Raw batch upsert fejl:', e3.message);
       }
     } catch(syncErr){
-      console.warn('Batch sync fejl:', syncErr);
+      console.warn('Batch cloud sync fejl (data er gemt lokalt):', syncErr);
     }
+  } else {
+    console.log('Ikke logget ind — data gemt lokalt kun');
   }
 
   const parts = [];
