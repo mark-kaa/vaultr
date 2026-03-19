@@ -15,7 +15,6 @@
 <meta name="author" content="Perplexity Computer">
 <meta property="og:see_also" content="https://www.perplexity.ai/computer">
 <link rel="author" href="https://www.perplexity.ai/computer">
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <meta name="robots" content="noindex, nofollow"/>
@@ -544,8 +543,6 @@ tbody tr:hover .btn-del{opacity:1}
 .sync-indicator.error{color:var(--red)}
 
 </style>
-  <!-- Supabase SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -691,6 +688,9 @@ tbody tr:hover .btn-del{opacity:1}
   <a href="https://www.perplexity.ai/computer" target="_blank" style="transition:color var(--trans)">Created with Perplexity Computer</a>
 </footer>
 
+<!-- CDN scripts før app-script = garanterer at Chart + Supabase er klar -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 // ═══════════════════════════════════════════════════════
 // SUPABASE AUTH + CLOUD SYNC
