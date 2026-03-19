@@ -649,22 +649,47 @@ async function submitAuth() {
   const email = document.getElementById('authEmail').value.trim();
   const pw    = document.getElementById('authPassword').value;
   const errEl = document.getElementById('authErr');
+  const btn   = document.querySelector('#authLoginForm .auth-submit');
   errEl.textContent = '';
   if(!email||!pw) { errEl.textContent = 'Udfyld email og adgangskode.'; return; }
+  if(btn) { btn.disabled=true; btn.textContent='Logger ind...'; }
   const { error } = await supa.auth.signInWithPassword({ email, password: pw });
-  if(error) errEl.textContent = error.message === 'Invalid login credentials'
-    ? 'Forkert email eller adgangskode.' : error.message;
+  if(btn) { btn.disabled=false; btn.textContent='Log ind'; }
+  if(error) {
+    errEl.style.color='var(--red)';
+    const msg = error.message;
+    if(msg === 'Invalid login credentials') errEl.textContent = 'Forkert email eller adgangskode.';
+    else if(msg.includes('Email not confirmed')) errEl.textContent = 'Email ikke bekræftet — tjek din indbakke og klik bekræftelseslinket.';
+    else errEl.textContent = msg;
+  }
 }
 async function submitSignup() {
   const email = document.getElementById('authEmailS').value.trim();
   const pw    = document.getElementById('authPasswordS').value;
   const errEl = document.getElementById('authErrS');
+  const btn   = document.querySelector('#authSignupForm .auth-submit');
   errEl.textContent = '';
   if(!email||!pw) { errEl.textContent = 'Udfyld email og adgangskode.'; return; }
   if(pw.length < 6) { errEl.textContent = 'Adgangskode skal være mindst 6 tegn.'; return; }
-  const { error } = await supa.auth.signUp({ email, password: pw });
-  if(error) errEl.textContent = error.message;
-  else errEl.style.color='var(--green)', errEl.textContent = 'Konto oprettet! Tjek din email for bekræftelse.';
+  if(btn) { btn.disabled=true; btn.textContent='Opretter...'; }
+  const { data, error } = await supa.auth.signUp({
+    email, password: pw,
+    options: { emailRedirectTo: 'https://mark-kaa.github.io/pokemon-samling' }
+  });
+  if(btn) { btn.disabled=false; btn.textContent='Opret konto'; }
+  if(error) {
+    errEl.style.color='var(--red)';
+    errEl.textContent = error.message;
+  } else if(data?.user?.identities?.length === 0) {
+    // Bruger eksisterer allerede
+    errEl.style.color='var(--red)';
+    errEl.textContent = 'Email er allerede i brug — prøv Log ind.';
+  } else {
+    errEl.style.color='var(--green)';
+    errEl.textContent = 'Konto oprettet! Bekræft via email, klik derefter Log ind.';
+    // Skift automatisk til login-tab efter 2 sek
+    setTimeout(()=>switchAuthTab('login'), 2000);
+  }
 }
 function showUserMenu() {
   if(confirm('Log ud af Vaultr?')) supa.auth.signOut();
@@ -3103,6 +3128,10 @@ switchTab('overview');
       <div class="auth-field"><label>Adgangskode</label><input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()"/></div>
       <button class="auth-submit" onclick="submitAuth()">Log ind</button>
       <div class="auth-err" id="authErr"></div>
+      <div style="text-align:center;margin-top:.6rem">
+        <span style="font-size:.75rem;color:var(--muted)">Har du ikke en konto? </span>
+        <span style="font-size:.75rem;color:var(--primary);cursor:pointer;font-weight:700" onclick="switchAuthTab('signup')">Opret her →</span>
+      </div>
     </div>
     <div id="authSignupForm" style="display:none">
       <div class="auth-field"><label>Email</label><input type="email" id="authEmailS" placeholder="din@email.dk" autocomplete="email"/></div>
