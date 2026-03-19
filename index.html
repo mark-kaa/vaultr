@@ -2050,11 +2050,27 @@ async function executeCSVImport(){
   // Gem lokalt
   saveAll();
 
-  // Cloud sync — upsert alle nye items
-  const toSync = [...gradedData, ...sealedData, ...rawData];
-  for(const it of toSync){
-    const t = gradedData.find(x=>x.id===it.id)?'graded_items':sealedData.find(x=>x.id===it.id)?'sealed_items':'raw_items';
-    await upsertItem(t, it);
+  // Cloud sync — batch upsert (3 kald i stedet for ét per item)
+  if(supaUser && supa){
+    try{
+      if(gradedData.length){
+        const batch = gradedData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
+        const {error:e1} = await supa.from('graded_items').upsert(batch, {onConflict:'id'});
+        if(e1) console.warn('Graded batch upsert fejl:', e1.message);
+      }
+      if(sealedData.length){
+        const batch = sealedData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
+        const {error:e2} = await supa.from('sealed_items').upsert(batch, {onConflict:'id'});
+        if(e2) console.warn('Sealed batch upsert fejl:', e2.message);
+      }
+      if(rawData.length){
+        const batch = rawData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
+        const {error:e3} = await supa.from('raw_items').upsert(batch, {onConflict:'id'});
+        if(e3) console.warn('Raw batch upsert fejl:', e3.message);
+      }
+    } catch(syncErr){
+      console.warn('Batch sync fejl:', syncErr);
+    }
   }
 
   const parts = [];
