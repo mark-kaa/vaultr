@@ -184,6 +184,31 @@ tbody tr:hover .btn-del{opacity:1}
 .mover-chg.up{color:var(--green)}
 .mover-chg.down{color:var(--red)}
 
+/* ── Trade Analyzer ── */
+.trade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.trade-overlay.hidden{display:none}
+.trade-box{background:var(--surface);border:1px solid var(--border);border-radius:.75rem;width:min(900px,95vw);max-height:90vh;overflow-y:auto;box-shadow:var(--shadow-lg)}
+.trade-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem .75rem;border-bottom:1px solid var(--border)}
+.trade-title{font-size:1rem;font-weight:800;color:var(--text)}
+.trade-body{display:grid;grid-template-columns:1fr auto 1fr;gap:0;padding:1.25rem}
+.trade-col{padding:0 1rem}
+.trade-divider{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.5rem;padding:0 .5rem}
+.trade-divider-line{width:1px;flex:1;background:var(--border)}
+.trade-vs{background:var(--surface2);border:1px solid var(--border);border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;color:var(--muted);flex-shrink:0}
+.trade-select{width:100%;padding:.4rem .6rem;background:var(--surface2);border:1px solid var(--border);border-radius:.4rem;font-size:.82rem;color:var(--text);margin-bottom:.75rem}
+.trade-card-name{font-size:.9rem;font-weight:800;color:var(--text);margin-bottom:.2rem}
+.trade-card-meta{font-size:.72rem;color:var(--muted);margin-bottom:.75rem}
+.trade-stat-row{display:flex;justify-content:space-between;align-items:center;padding:.3rem 0;border-bottom:1px solid var(--border)}
+.trade-stat-row:last-child{border-bottom:none}
+.trade-stat-label{font-size:.74rem;color:var(--muted)}
+.trade-stat-val{font-size:.8rem;font-weight:700;color:var(--text)}
+.trade-verdict{margin-top:.85rem;padding:.6rem .8rem;border-radius:.45rem;font-size:.82rem;font-weight:700;text-align:center}
+.trade-verdict.favorable{background:color-mix(in srgb,var(--green) 12%,var(--surface));color:var(--green);border:1px solid color-mix(in srgb,var(--green) 30%,var(--border))}
+.trade-verdict.unfavorable{background:color-mix(in srgb,var(--red) 12%,var(--surface));color:var(--red);border:1px solid color-mix(in srgb,var(--red) 30%,var(--border))}
+.trade-verdict.neutral{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+@media(max-width:600px){.trade-body{grid-template-columns:1fr}.trade-divider{flex-direction:row;padding:.5rem 0}.trade-divider-line{width:100%;height:1px;flex:none}}
+
+
 /* ── Prishistorik sparkline ── */
 .price-history-panel{margin-top:.75rem;padding:.6rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:.5rem}
 .price-history-title{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem;display:flex;align-items:center;gap:.4rem}
@@ -629,6 +654,7 @@ supa.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('userEmail').textContent = supaUser.email;
     document.getElementById('authOverlay').classList.add('hidden');
     await loadFromSupabase();
+    await loadPriceHistoryFromSupabase();
     render();
   } else {
     document.getElementById('userChipWrap').style.display = 'none';
@@ -964,6 +990,9 @@ async function fetchLivePrice(item){
   };
   liveCache[cid] = result;
   saveLiveCache();
+  // Optag prishistorik snapshot
+  const _snapPrice = result.tcgdex?.cm?.averageSellPrice || result.tcgdex?.cm?.avg1;
+  if(_snapPrice) recordPriceSnapshot(cid, _snapPrice);
   return result;
 }
 
@@ -1063,7 +1092,7 @@ function renderEUPricePanel(item){
         Kilde: ${d.tcgdex?.name ? 'TCGdex (Cardmarket EU)' : 'cardmarket-api.com'} &middot; ${agoStr}
         ${d.tcgdex?.set ? ` &middot; ${esc(d.tcgdex.set)}` : ''}
       </div>
-      ${renderPriceHistoryPanel(item)}
+      ${renderPriceHistorySVG(item.id)}
       ${renderPriceByCondition(item)}
     </div>`;
 }
@@ -1360,6 +1389,349 @@ function renderPriceByCondition(item){
         Pris efter stand <span style="font-size:.62rem;color:var(--faint);font-weight:400;margin-left:.3rem;text-transform:none">Baseret på CM NM-pris × stand-multiplikator</span>
       </div>
       <div class="pbc-grid">${cells}</div>
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════════
+// FEATURE A: Prishistorik — snapshots + SVG sparkline
+// ════════════════════════════════════════════════════════
+// Lokal cache: { [itemId]: [{price, ts}] }  — max 90 punkter per kort
+let priceHistory = JSON.parse(localStorage.getItem('pf_price_history') || '{}');
+
+function savePriceHistory(){
+  localStorage.setItem('pf_price_history', JSON.stringify(priceHistory));
+}
+
+// Gem snapshot i lokal cache + Supabase
+async function recordPriceSnapshot(itemId, price){
+  if(!price || price <= 0) return;
+  const snap = { price: parseFloat(price.toFixed(2)), ts: Date.now() };
+  if(!priceHistory[itemId]) priceHistory[itemId] = [];
+  // Undgå duplikater inden for samme time
+  const lastSnap = priceHistory[itemId].slice(-1)[0];
+  const oneHour = 60*60*1000;
+  if(lastSnap && (snap.ts - lastSnap.ts) < oneHour) return; // for nyligt
+  priceHistory[itemId].push(snap);
+  if(priceHistory[itemId].length > 90) priceHistory[itemId] = priceHistory[itemId].slice(-90);
+  savePriceHistory();
+  // Cloud sync
+  if(supaUser){
+    supa.from('price_history').upsert({
+      item_id: itemId,
+      user_id: supaUser.id,
+      snapshots: priceHistory[itemId],
+    }, { onConflict: 'item_id,user_id' }).then(({error}) => {
+      if(error) console.warn('price_history upsert fejl:', error.message);
+    });
+  }
+}
+
+// Load prishistorik fra Supabase ved login
+async function loadPriceHistoryFromSupabase(){
+  if(!supaUser) return;
+  const { data, error } = await supa.from('price_history').select('item_id,snapshots').eq('user_id', supaUser.id);
+  if(error){ console.warn('price_history load fejl:', error.message); return; }
+  data.forEach(r => {
+    if(r.snapshots?.length) priceHistory[r.item_id] = r.snapshots;
+  });
+  savePriceHistory();
+}
+
+// SVG sparkline renderer
+function renderPriceHistorySVG(itemId){
+  const snaps = priceHistory[itemId];
+  // Kombiner med live-cache data-punkter hvis få historiske punkter
+  const liveCm = liveCache[itemId]?.tcgdex?.cm;
+  let points = snaps ? [...snaps] : [];
+  // Tilføj statiske CM-punkter som baggrundskontekst hvis < 3 rigtige snapshots
+  if(points.length < 3 && liveCm){
+    const now = Date.now();
+    const syntheticPoints = [
+      liveCm.avg30 ? { price: liveCm.avg30, ts: now - 30*24*60*60*1000, synthetic: true } : null,
+      liveCm.avg7  ? { price: liveCm.avg7,  ts: now - 7*24*60*60*1000,  synthetic: true } : null,
+      liveCm.avg1  ? { price: liveCm.avg1,  ts: now - 1*24*60*60*1000,  synthetic: true } : null,
+      (liveCm.averageSellPrice||liveCm.avg1) ? { price: liveCm.averageSellPrice||liveCm.avg1, ts: now, synthetic: false } : null,
+    ].filter(Boolean);
+    // Flet syntetiske ind med rigtige (rigtige har prioritet)
+    const merged = [...syntheticPoints];
+    points.forEach(p => {
+      // Fjern syntetisk punkt tættest på dette rigtige punkt
+      const closest = merged.reduce((best, m, i) => Math.abs(m.ts-p.ts) < Math.abs((merged[best]||{ts:Infinity}).ts-p.ts) ? i : best, 0);
+      if(merged[closest]?.synthetic) merged.splice(closest,1);
+      merged.push(p);
+    });
+    points = merged.sort((a,b) => a.ts-b.ts);
+  }
+  if(points.length < 2) return '';
+
+  const prices = points.map(p=>p.price);
+  const minP = Math.min(...prices);
+  const maxP = Math.max(...prices);
+  const range = maxP - minP || 1;
+  const W=260, H=52, PAD=4;
+
+  // Byg SVG polyline
+  const coords = points.map((p,i) => {
+    const x = PAD + (i/(points.length-1)) * (W-PAD*2);
+    const y = H - PAD - ((p.price-minP)/range) * (H-PAD*2);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+
+  // Farve baseret på trend
+  const first = prices[0], last = prices[prices.length-1];
+  const trendUp = last >= first;
+  const lineColor = trendUp ? 'var(--green)' : 'var(--red)';
+  const fillColor = trendUp ? '#6daa4522' : '#f8717122';
+
+  // Gradient fill under linjen
+  const areaCoords = coords.join(' ') + ` ${(W-PAD).toFixed(1)},${H} ${PAD},${H}`;
+
+  const pctChg = first > 0 ? ((last-first)/first*100) : 0;
+  const chgStr = (pctChg>=0?'+':'')+pctChg.toFixed(1)+'%';
+  const chgColor = trendUp ? 'var(--green)' : 'var(--red)';
+
+  // Tooltip datapunkter
+  const dotHtml = points.map((p,i) => {
+    const x = PAD + (i/(points.length-1)) * (W-PAD*2);
+    const y = H - PAD - ((p.price-minP)/range) * (H-PAD*2);
+    const dt = new Date(p.ts).toLocaleDateString('da-DK',{day:'numeric',month:'short'});
+    const synLabel = p.synthetic ? ' (historisk avg)' : '';
+    return `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="${lineColor}" opacity="0.7">
+      <title>${dt}${synLabel}: €${p.price.toFixed(2)}</title>
+    </circle>`;
+  }).join('');
+
+  const dataLabel = snaps?.length >= 2
+    ? `${snaps.length} snapshots`
+    : 'Syntetisk fra CM avg (hent live priser for rigtig historik)';
+
+  return `
+    <div class="price-history-panel">
+      <div class="price-history-title">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+        Prishistorik
+        <span style="font-size:.72rem;font-weight:700;color:${chgColor};margin-left:auto">${chgStr}</span>
+      </div>
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" preserveAspectRatio="none" style="display:block;overflow:visible">
+        <polygon points="${areaCoords}" fill="${fillColor}"/>
+        <polyline points="${coords.join(' ')}" fill="none" stroke="${lineColor}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+        ${dotHtml}
+      </svg>
+      <div class="sparkline-labels">
+        <span>${new Date(points[0].ts).toLocaleDateString('da-DK',{day:'numeric',month:'short'})}</span>
+        <span style="color:var(--muted);font-size:.6rem">${dataLabel}</span>
+        <span>Nu: €${last.toFixed(2)}</span>
+      </div>
+    </div>`;
+}
+
+
+// ════════════════════════════════════════════════════════
+// FEATURE B: Trade Analyzer
+// ════════════════════════════════════════════════════════
+function openTradeAnalyzer(){
+  const all = [...gradedData,...sealedData,...rawData];
+  const makeOptions = (selId) => {
+    const sel = document.getElementById(selId);
+    if(!sel) return;
+    sel.innerHTML = '<option value="">Vælg kort...</option>';
+    all.forEach(i => {
+      const opt = document.createElement('option');
+      opt.value = i.id;
+      opt.textContent = i.productName.substring(0,50) + (i.grade?' ['+i.grade+']':'') + ' — ' + fmtDKK(totV(i));
+      sel.appendChild(opt);
+    });
+  };
+  makeOptions('tradeSelA');
+  makeOptions('tradeSelB');
+  document.getElementById('tradeDataA').innerHTML = '';
+  document.getElementById('tradeDataB').innerHTML = '';
+  document.getElementById('tradeVerdict').innerHTML = '';
+  document.getElementById('tradeOverlay').classList.remove('hidden');
+}
+
+function closeTrade(){
+  document.getElementById('tradeOverlay').classList.add('hidden');
+}
+
+function getTradeItemData(item){
+  const val = totV(item);
+  const cost = totC(item);
+  const pl = val - cost;
+  const plPct_ = cost > 0 ? (pl/cost*100) : 0;
+  const ai = aiCache[item.id];
+  const live = liveCache[item.id]?.tcgdex?.cm;
+  const liveAvg = live ? (live.averageSellPrice||live.avg1) : null;
+  const mults = getPSAMultipliers(item.condition);
+  const psa10est = mults?.psa10 ? fmtDKK(val * mults.psa10) : null;
+  const psa9est  = mults?.psa9  ? fmtDKK(val * mults.psa9)  : null;
+
+  let rows = `
+    <div class="trade-stat-row"><span class="trade-stat-label">Markedsværdi</span><span class="trade-stat-val gold">${fmtDKK(val)}</span></div>
+    <div class="trade-stat-row"><span class="trade-stat-label">Kostpris</span><span class="trade-stat-val">${fmtDKK(cost)}</span></div>
+    <div class="trade-stat-row"><span class="trade-stat-label">P/L</span><span class="trade-stat-val ${pl>=0?'green':'red'}">${fmtDKK(pl)} (${plPct_.toFixed(1)}%)</span></div>
+    ${liveAvg ? `<div class="trade-stat-row"><span class="trade-stat-label">CM Live avg</span><span class="trade-stat-val teal">€${liveAvg.toFixed(2)}</span></div>` : ''}
+    ${psa9est  ? `<div class="trade-stat-row"><span class="trade-stat-label">PSA 9 potentiale</span><span class="trade-stat-val" style="color:var(--green)">${psa9est}</span></div>` : ''}
+    ${psa10est ? `<div class="trade-stat-row"><span class="trade-stat-label">PSA 10 potentiale</span><span class="trade-stat-val teal">${psa10est}</span></div>` : ''}
+    ${ai ? `<div class="trade-stat-row"><span class="trade-stat-label">AI Score</span><span class="trade-stat-val"><span class="score-badge score-${scoreColor(ai.overall_score)}" style="cursor:default">${ai.overall_score}/10</span></span></div>` : ''}
+    ${ai ? `<div class="trade-stat-row"><span class="trade-stat-label">AI anbefaling</span><span class="trade-stat-val">${ai.recommendation||'—'}</span></div>` : ''}
+  `;
+
+  return { val, cost, pl, plPct: plPct_, rows, ai, mults };
+}
+
+function updateTradeCol(col){
+  const sel = document.getElementById('trade Sel'+col);
+  const dataEl = document.getElementById('tradeData'+col);
+  const itemId = document.getElementById('tradeSel'+col).value;
+  if(!itemId){ dataEl.innerHTML=''; renderTradeVerdict(); return; }
+  const all = [...gradedData,...sealedData,...rawData];
+  const item = all.find(i=>i.id===itemId);
+  if(!item) return;
+  const d = getTradeItemData(item);
+  dataEl.innerHTML = `
+    <div class="trade-card-name">${esc(item.productName)}</div>
+    <div class="trade-card-meta">${esc(item.set||'')}${item.grade?' · '+esc(item.grade):''}${item.condition?' · '+esc(item.condition):''}</div>
+    ${d.rows}
+  `;
+  renderTradeVerdict();
+}
+
+function renderTradeVerdict(){
+  const idA = document.getElementById('tradeSelA').value;
+  const idB = document.getElementById('tradeSelB').value;
+  const verdictEl = document.getElementById('tradeVerdict');
+  if(!idA||!idB){ verdictEl.innerHTML=''; return; }
+  const all = [...gradedData,...sealedData,...rawData];
+  const itemA = all.find(i=>i.id===idA);
+  const itemB = all.find(i=>i.id===idB);
+  if(!itemA||!itemB) return;
+  const dA = getTradeItemData(itemA);
+  const dB = getTradeItemData(itemB);
+  const diff = dB.val - dA.val;
+  const diffPct = dA.val > 0 ? (diff/dA.val*100) : 0;
+
+  let cls, txt, icon;
+  if(diff > dA.val * 0.05){
+    cls='favorable'; icon='✅';
+    txt=`Fordelagtigt trade — du modtager ${fmtDKK(dB.val)} for ${fmtDKK(dA.val)} (${diffPct>=0?'+':''}${diffPct.toFixed(1)}%). Du tjener ${fmtDKK(Math.abs(diff))} på handlen.`;
+  } else if(diff < -dA.val * 0.05){
+    cls='unfavorable'; icon='⚠️';
+    txt=`Ufordelagtigt trade — du giver ${fmtDKK(dA.val)} for ${fmtDKK(dB.val)} (${diffPct.toFixed(1)}%). Du taber ${fmtDKK(Math.abs(diff))} på handlen.`;
+  } else {
+    cls='neutral'; icon='⚖️';
+    txt=`Jævnt trade — næsten samme markedsværdi (forskel: ${fmtDKK(Math.abs(diff))}, ${Math.abs(diffPct).toFixed(1)}%).`;
+  }
+
+  // AI-faktor
+  const aiA = dA.ai?.overall_score||0, aiB = dB.ai?.overall_score||0;
+  let aiFactor = '';
+  if(aiA && aiB){
+    if(aiB > aiA+1) aiFactor = ` AI-score taler for handlen: modtaget kort scorer ${aiB}/10 vs. ${aiA}/10.`;
+    else if(aiA > aiB+1) aiFactor = ` AI-score taler imod: dit kort scorer ${aiA}/10 vs. ${aiB}/10.`;
+  }
+
+  verdictEl.innerHTML = `<div class="trade-verdict ${cls}">${icon} ${txt}${aiFactor}</div>`;
+}
+
+// Tilføj Trade Analyzer knap i header
+document.addEventListener('DOMContentLoaded', ()=>{
+  // Tilføj trade knap til header
+  const hdr = document.querySelector('.hdr .spacer');
+  if(hdr){
+    const btn = document.createElement('button');
+    btn.className='btn-icon';
+    btn.title='Trade Analyzer';
+    btn.style.cssText='margin-right:.25rem;font-size:.8rem;padding:.25rem .55rem;display:flex;align-items:center;gap:.3rem;color:var(--muted);border:1px solid var(--border);border-radius:.4rem;background:var(--surface2)';
+    btn.innerHTML='⚖️ <span style="font-size:.75rem;font-weight:700">Trade</span>';
+    btn.onclick=openTradeAnalyzer;
+    hdr.insertAdjacentElement('afterend', btn);
+  }
+});
+
+
+// ════════════════════════════════════════════════════════
+// FEATURE C: Collections per spil
+// ════════════════════════════════════════════════════════
+function renderPerGameModule(){
+  const all = [...gradedData,...sealedData,...rawData];
+  if(all.length === 0) return '<div style="font-size:.8rem;color:var(--muted)">Upload data for at se opdeling per spil.</div>';
+
+  // Grupper per kategori/spil
+  const games = {};
+  all.forEach(i => {
+    const g = i.category || 'Andet';
+    if(!games[g]) games[g] = { items:[], cost:0, val:0, graded:0, sealed:0, raw:0, ai:[] };
+    games[g].items.push(i);
+    games[g].cost += totC(i);
+    games[g].val  += totV(i);
+    if(gradedData.find(x=>x.id===i.id)) games[g].graded++;
+    else if(sealedData.find(x=>x.id===i.id)) games[g].sealed++;
+    else games[g].raw++;
+    const ai = aiCache[i.id];
+    if(ai?.overall_score) games[g].ai.push(ai.overall_score);
+  });
+
+  const totalVal = all.reduce((s,i)=>s+totV(i),0);
+  const sortedGames = Object.entries(games).sort((a,b)=>b[1].val-a[1].val);
+
+  const rows = sortedGames.map(([name, g]) => {
+    const pl = g.val - g.cost;
+    const plPct = g.cost > 0 ? (pl/g.cost*100) : 0;
+    const plCls = pl >= 0 ? 'green' : 'red';
+    const share = totalVal > 0 ? (g.val/totalVal*100) : 0;
+    const avgAI = g.ai.length ? (g.ai.reduce((a,b)=>a+b,0)/g.ai.length) : null;
+    const topItem = [...g.items].sort((a,b)=>totV(b)-totV(a))[0];
+    const barW = Math.max(3, share);
+
+    // Minibar
+    const typeBar = `
+      <div style="display:flex;height:4px;border-radius:2px;overflow:hidden;gap:1px;width:80px">
+        ${g.graded ? `<div style="flex:${g.graded};background:var(--blue)" title="Graderet: ${g.graded}"></div>` : ''}
+        ${g.sealed ? `<div style="flex:${g.sealed};background:var(--purple)" title="Sealed: ${g.sealed}"></div>` : ''}
+        ${g.raw    ? `<div style="flex:${g.raw};background:var(--green)" title="Raw: ${g.raw}"></div>` : ''}
+      </div>`;
+
+    return `<tr>
+      <td style="font-weight:700;font-size:.8rem">${esc(name)}</td>
+      <td class="num">${g.items.length}</td>
+      <td class="num gold">${fmtDKK(g.val)}</td>
+      <td class="num ${plCls}">${plPct>=0?'+':''}${plPct.toFixed(1)}%</td>
+      <td class="num">
+        <div style="display:flex;align-items:center;gap:.4rem">
+          <div style="width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden">
+            <div style="width:${barW.toFixed(1)}%;height:100%;background:var(--primary);border-radius:3px"></div>
+          </div>
+          <span style="font-size:.72rem">${share.toFixed(1)}%</span>
+        </div>
+      </td>
+      <td>${typeBar}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topItem?esc(topItem.productName):''}">${topItem?esc(topItem.productName.substring(0,22)):'—'}</td>
+      <td class="num">${avgAI ? `<span class="score-badge score-${scoreColor(Math.round(avgAI))}" style="cursor:default">${avgAI.toFixed(1)}</span>` : '<span style="color:var(--faint)">—</span>'}</td>
+    </tr>`;
+  }).join('');
+
+  return `
+    <div style="overflow-x:auto">
+    <table class="dash-table">
+      <thead><tr>
+        <th>Spil</th>
+        <th class="num">Poster</th>
+        <th class="num">Markedsværdi</th>
+        <th class="num">P/L %</th>
+        <th class="num">Andel</th>
+        <th>Type</th>
+        <th>Top position</th>
+        <th class="num">AI avg</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    </div>
+    <div style="display:flex;gap:.5rem;margin-top:.6rem;font-size:.67rem;color:var(--faint);align-items:center">
+      <div style="width:10px;height:4px;background:var(--blue);border-radius:1px"></div>Graderet
+      <div style="width:10px;height:4px;background:var(--purple);border-radius:1px"></div>Sealed
+      <div style="width:10px;height:4px;background:var(--green);border-radius:1px"></div>Raw
     </div>`;
 }
 
@@ -2313,6 +2685,16 @@ function renderDashboard(){
   </div>
 
 
+
+  <!-- MODULE: Collections per spil -->
+  <div class="dash-module" data-module-id="per-game" data-span="2" draggable="true">
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🎮 Collections per spil</span><button class="module-toggle" onclick="toggleModule('per-game')">－</button></div>
+    <div class="module-body">
+      ${renderPerGameModule()}
+    </div>
+    <div class="module-resize" onmousedown="startResize(event,'per-game')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  </div>
+
   <!-- MODULE: Market Movers -->
   <div class="dash-module" data-module-id="market-movers" draggable="true">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule('market-movers')">－</button></div>
@@ -3107,6 +3489,39 @@ document.getElementById('langSel').value = currentLang;
 applyLang();
 switchTab('overview');
 </script>
+
+
+<!-- TRADE ANALYZER MODAL -->
+<div class="trade-overlay hidden" id="tradeOverlay">
+  <div class="trade-box">
+    <div class="trade-header">
+      <div class="trade-title">⚖️ Trade Analyzer</div>
+      <button class="btn-icon" onclick="closeTrade()" style="font-size:1rem">✕</button>
+    </div>
+    <div class="trade-body">
+      <div class="trade-col" id="tradeColA">
+        <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Dit kort</div>
+        <select class="trade-select" id="tradeSelA" onchange="updateTradeCol('A')">
+          <option value="">Vælg kort...</option>
+        </select>
+        <div id="tradeDataA"></div>
+      </div>
+      <div class="trade-divider">
+        <div class="trade-divider-line"></div>
+        <div class="trade-vs">VS</div>
+        <div class="trade-divider-line"></div>
+      </div>
+      <div class="trade-col" id="tradeColB">
+        <div style="font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.4rem">Modtaget kort</div>
+        <select class="trade-select" id="tradeSelB" onchange="updateTradeCol('B')">
+          <option value="">Vælg kort...</option>
+        </select>
+        <div id="tradeDataB"></div>
+      </div>
+    </div>
+    <div id="tradeVerdict" style="padding:0 2.25rem 1.25rem"></div>
+  </div>
+</div>
 
 <!-- AUTH MODAL -->
 <div class="auth-overlay hidden" id="authOverlay">
