@@ -1822,15 +1822,13 @@ function clearSearch(){ document.getElementById('searchInput').value=''; documen
 function switchTab(tab){
   activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRow=null;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
-  document.getElementById('tab-'+tab).classList.add('active');
+  const tabEl = document.getElementById('tab-'+tab); if(tabEl) tabEl.classList.add('active');
   const isOverview = tab==='overview';
-  document.getElementById('summaryBar').parentElement.style.display = isOverview?'none':'';
-  document.getElementById('toolbar').style.display = isOverview?'none':'';
-  // analyse-bar er nu i toolbar — vises/skjules automatisk med toolbar
-  document.getElementById('dashboardPanel').classList.toggle('visible', isOverview);
-  document.getElementById('tablePanel').style.display = isOverview?'none':'';
-  // Nulstæl progress-tekst ved tab-skift (undgår at gammel analyse-status vises på forkert tab)
-  if(!batchRunning) document.getElementById('analyseProgress').innerHTML = '';
+  const sb = document.getElementById('summaryBar'); if(sb&&sb.parentElement) sb.parentElement.style.display = isOverview?'none':'';
+  const tb = document.getElementById('toolbar'); if(tb) tb.style.display = isOverview?'none':'';
+  const dp = document.getElementById('dashboardPanel'); if(dp) dp.classList.toggle('visible', isOverview);
+  const tp = document.getElementById('tablePanel'); if(tp) tp.style.display = isOverview?'none':'';
+  const ap = document.getElementById('analyseProgress'); if(ap && !batchRunning) ap.innerHTML = '';
   if(isOverview){ renderDashboard(); } else { render(); }
 }
 
@@ -4053,10 +4051,10 @@ function setLang(lang){
 
 function applyLang(){
   // Tabs
-  document.getElementById('tab-overview').textContent = t('tab_overview');
-  document.getElementById('tab-graded').textContent   = t('tab_graded');
-  document.getElementById('tab-sealed').textContent   = t('tab_sealed');
-  document.getElementById('tab-raw').textContent      = t('tab_raw');
+  const _to=document.getElementById('tab-overview'); if(_to) _to.textContent=t('tab_overview');
+  const _tg=document.getElementById('tab-graded');   if(_tg) _tg.textContent=t('tab_graded');
+  const _ts=document.getElementById('tab-sealed');   if(_ts) _ts.textContent=t('tab_sealed');
+  const _tr=document.getElementById('tab-raw');      if(_tr) _tr.textContent=t('tab_raw');
   // Search
   const si = document.getElementById('searchInput');
   if(si) si.placeholder = t('search_ph');
@@ -4086,7 +4084,7 @@ function applyLang(){
 initApiKey();
 initCMApiKey();
 // Restore language
-document.getElementById('langSel').value = currentLang;
+const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
 applyLang();
 switchTab('overview');
 // Skjul loading screen
