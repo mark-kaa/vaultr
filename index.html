@@ -549,6 +549,19 @@ tbody tr:hover .btn-del{opacity:1}
 </head>
 <body>
 
+<!-- LOADING SCREEN (skjules via JS når alt er klar) -->
+<div id="appLoader" style="position:fixed;inset:0;background:#0d1117;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem">
+  <svg width="40" height="40" viewBox="0 0 32 32" fill="none">
+    <path d="M16 2 L28 7 L28 17 Q28 25 16 30 Q4 25 4 17 L4 7 Z" stroke="#0ea5e9" stroke-width="2" fill="none" stroke-linejoin="round" opacity="0.4"/>
+    <path d="M10 10 L16 22 L22 10" stroke="#22d3ee" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+  <div style="font-family:system-ui,sans-serif;font-size:.85rem;color:#64748b;letter-spacing:.08em;text-transform:uppercase">Vaultr læser ind...</div>
+  <div style="width:120px;height:2px;background:#1c2235;border-radius:1px;overflow:hidden">
+    <div style="width:40%;height:100%;background:linear-gradient(90deg,#0ea5e9,#22d3ee);border-radius:1px;animation:ldbar 1.2s ease-in-out infinite"></div>
+  </div>
+</div>
+<style>@keyframes ldbar{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}</style>
+
 <!-- HEADER -->
 <header>
   <div class="hdr">
@@ -4078,6 +4091,9 @@ initCMApiKey();
 document.getElementById('langSel').value = currentLang;
 applyLang();
 switchTab('overview');
+// Skjul loading screen
+const _loader = document.getElementById('appLoader');
+if(_loader) _loader.style.display = 'none';
 </script>
 
 
