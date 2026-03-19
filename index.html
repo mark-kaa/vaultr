@@ -456,7 +456,34 @@ tbody tr:hover .btn-del{opacity:1}
 .live-status-change{font-size:.72rem;font-weight:700}
 .live-status-change.up{color:var(--green)}
 .live-status-change.down{color:var(--red)}
+
+/* ── Auth Modal ── */
+.auth-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+.auth-overlay.hidden{display:none}
+.auth-box{background:var(--surface);border:1px solid var(--border);border-radius:.75rem;padding:2rem 2.25rem;width:100%;max-width:380px;box-shadow:var(--shadow-lg)}
+.auth-logo{display:flex;align-items:center;gap:.6rem;margin-bottom:1.25rem;justify-content:center}
+.auth-logo span{font-size:1.2rem;font-weight:800;letter-spacing:-.02em;color:var(--text)}
+.auth-tabs{display:flex;gap:0;margin-bottom:1.5rem;background:var(--surface2);border-radius:.45rem;padding:.2rem}
+.auth-tab{flex:1;padding:.4rem;border-radius:.3rem;font-size:.83rem;font-weight:700;color:var(--muted);text-align:center;cursor:pointer;transition:all var(--trans)}
+.auth-tab.active{background:var(--primary);color:#000}
+.auth-field{margin-bottom:.9rem}
+.auth-field label{display:block;font-size:.74rem;font-weight:700;color:var(--muted);margin-bottom:.3rem;text-transform:uppercase;letter-spacing:.04em}
+.auth-field input{width:100%;padding:.5rem .7rem;background:var(--surface2);border:1px solid var(--border);border-radius:.4rem;font-size:.9rem;color:var(--text);outline:none;box-sizing:border-box;transition:border-color var(--trans)}
+.auth-field input:focus{border-color:var(--primary)}
+.auth-submit{width:100%;padding:.55rem;background:var(--primary);color:#000;font-weight:800;font-size:.9rem;border-radius:.45rem;margin-top:.25rem;transition:opacity var(--trans)}
+.auth-submit:hover{opacity:.85}
+.auth-err{font-size:.78rem;color:var(--red);margin-top:.5rem;min-height:1.2em;text-align:center}
+.auth-or{text-align:center;font-size:.75rem;color:var(--faint);margin:.75rem 0}
+.user-chip{display:flex;align-items:center;gap:.4rem;padding:.2rem .55rem;background:var(--surface2);border:1px solid var(--border);border-radius:999px;font-size:.76rem;color:var(--muted);cursor:pointer;transition:all var(--trans)}
+.user-chip:hover{border-color:var(--primary);color:var(--text)}
+.user-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+.sync-indicator{font-size:.7rem;color:var(--muted);display:flex;align-items:center;gap:.3rem}
+.sync-indicator.syncing{color:var(--primary)}
+.sync-indicator.error{color:var(--red)}
+
 </style>
+  <!-- Supabase SDK -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 </head>
 <body>
 
@@ -502,6 +529,17 @@ tbody tr:hover .btn-del{opacity:1}
       <option value="pt">🇵🇹 PT</option>
       <option value="it">🇮🇹 IT</option>
     </select>
+    <div id="userChipWrap" style="display:none">
+      <div class="user-chip" onclick="showUserMenu()" title="Din konto">
+        <div class="user-dot"></div>
+        <span id="userEmail" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+    <div id="syncStatus" class="sync-indicator" style="display:none">
+      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
+      <span id="syncText">Syncer...</span>
+    </div>
     <button class="btn-icon" onclick="toggleTheme()" title="Skift tema">
       <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
@@ -576,6 +614,138 @@ tbody tr:hover .btn-del{opacity:1}
 
 <script>
 // ═══════════════════════════════════════════════════════
+// SUPABASE AUTH + CLOUD SYNC
+// ═══════════════════════════════════════════════════════
+const SUPA_URL = 'https://foophemjhkomzzzpffuq.supabase.co';
+const SUPA_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZvb3BoZW1qaGtvbXp6enBmZnVxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5MjA0MTYsImV4cCI6MjA4OTQ5NjQxNn0.8ABNM30VYeq46QYa3UYlbGW_TcJCm90ofFyhUr1cJYg';
+const supa = supabase.createClient(SUPA_URL, SUPA_KEY);
+let supaUser = null;  // null = ikke logget ind
+
+// ── Auth state listener ──
+supa.auth.onAuthStateChange(async (event, session) => {
+  supaUser = session?.user || null;
+  if(supaUser) {
+    document.getElementById('userChipWrap').style.display = '';
+    document.getElementById('userEmail').textContent = supaUser.email;
+    document.getElementById('authOverlay').classList.add('hidden');
+    await loadFromSupabase();
+    render();
+  } else {
+    document.getElementById('userChipWrap').style.display = 'none';
+    document.getElementById('authOverlay').classList.remove('hidden');
+  }
+});
+
+// ── Auth UI ──
+let _authTab = 'login';
+function switchAuthTab(tab) {
+  _authTab = tab;
+  document.getElementById('tabLogin').classList.toggle('active', tab==='login');
+  document.getElementById('tabSignup').classList.toggle('active', tab==='signup');
+  document.getElementById('authLoginForm').style.display  = tab==='login'  ? '' : 'none';
+  document.getElementById('authSignupForm').style.display = tab==='signup' ? '' : 'none';
+}
+async function submitAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const pw    = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('authErr');
+  errEl.textContent = '';
+  if(!email||!pw) { errEl.textContent = 'Udfyld email og adgangskode.'; return; }
+  const { error } = await supa.auth.signInWithPassword({ email, password: pw });
+  if(error) errEl.textContent = error.message === 'Invalid login credentials'
+    ? 'Forkert email eller adgangskode.' : error.message;
+}
+async function submitSignup() {
+  const email = document.getElementById('authEmailS').value.trim();
+  const pw    = document.getElementById('authPasswordS').value;
+  const errEl = document.getElementById('authErrS');
+  errEl.textContent = '';
+  if(!email||!pw) { errEl.textContent = 'Udfyld email og adgangskode.'; return; }
+  if(pw.length < 6) { errEl.textContent = 'Adgangskode skal være mindst 6 tegn.'; return; }
+  const { error } = await supa.auth.signUp({ email, password: pw });
+  if(error) errEl.textContent = error.message;
+  else errEl.style.color='var(--green)', errEl.textContent = 'Konto oprettet! Tjek din email for bekræftelse.';
+}
+function showUserMenu() {
+  if(confirm('Log ud af Vaultr?')) supa.auth.signOut();
+}
+
+// ── Sync helpers ──
+function showSync(state, txt) {
+  const el = document.getElementById('syncStatus');
+  const tx = document.getElementById('syncText');
+  if(!el) return;
+  el.style.display = state ? '' : 'none';
+  el.className = 'sync-indicator' + (state==='syncing'?' syncing':state==='error'?' error':'');
+  if(tx) tx.textContent = txt||'';
+}
+
+// ── Load fra Supabase ──
+async function loadFromSupabase() {
+  if(!supaUser) return;
+  showSync('syncing','Henter data...');
+  try {
+    const [g, s, r, ai] = await Promise.all([
+      supa.from('graded_items').select('id,data').eq('user_id', supaUser.id),
+      supa.from('sealed_items').select('id,data').eq('user_id', supaUser.id),
+      supa.from('raw_items').select('id,data').eq('user_id', supaUser.id),
+      supa.from('ai_cache').select('item_id,data').eq('user_id', supaUser.id),
+    ]);
+    if(!g.error) gradedData = g.data.map(r=>r.data);
+    if(!s.error) sealedData = s.data.map(r=>r.data);
+    if(!r.error) rawData    = r.data.map(r=>r.data);
+    if(!ai.error) {
+      aiCache = {};
+      ai.data.forEach(r => aiCache[r.item_id] = r.data);
+    }
+    // Gem lokalt som fallback
+    localStorage.setItem('pf_graded',   JSON.stringify(gradedData));
+    localStorage.setItem('pf_sealed',   JSON.stringify(sealedData));
+    localStorage.setItem('pf_raw',      JSON.stringify(rawData));
+    localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
+    showSync(false);
+    showToast('✅ Data hentet fra cloud');
+  } catch(e) {
+    console.error('Supabase load fejl:', e);
+    showSync('error','Sync fejl');
+  }
+}
+
+// ── Upsert et enkelt item til Supabase ──
+async function upsertItem(table, item) {
+  if(!supaUser) return;
+  const { error } = await supa.from(table).upsert({
+    id: item.id,
+    user_id: supaUser.id,
+    data: item,
+  }, { onConflict: 'id,user_id' });
+  if(error) console.warn('Upsert fejl:', error);
+}
+
+// ── Slet et item fra Supabase ──
+async function deleteItem(table, itemId) {
+  if(!supaUser) return;
+  await supa.from(table).delete().eq('id', itemId).eq('user_id', supaUser.id);
+}
+
+// ── Upsert AI cache entry ──
+async function upsertAI(itemId, data) {
+  if(!supaUser) return;
+  await supa.from('ai_cache').upsert({
+    item_id: itemId,
+    user_id: supaUser.id,
+    data: data,
+  }, { onConflict: 'item_id,user_id' });
+}
+
+// ── Helper: hvilken tabel hører et item til? ──
+function tableForItem(item) {
+  if(gradedData.find(i=>i.id===item.id)) return 'graded_items';
+  if(sealedData.find(i=>i.id===item.id)) return 'sealed_items';
+  return 'raw_items';
+}
+
+// ═══════════════════════════════════════════════════════
 // STORAGE
 // ═══════════════════════════════════════════════════════
 let gradedData  = JSON.parse(localStorage.getItem('pf_graded')  || '[]');
@@ -586,10 +756,12 @@ let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
 let expandedRow = null; // currently expanded AI detail row id
 
 function saveAll(){
+  // Altid gem lokalt som fallback
   localStorage.setItem('pf_graded', JSON.stringify(gradedData));
   localStorage.setItem('pf_sealed', JSON.stringify(sealedData));
   localStorage.setItem('pf_raw',    JSON.stringify(rawData));
   localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
+  // Cloud sync sker per-item via upsertItem() / upsertAI()
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1283,6 +1455,12 @@ function handleCSV(input){
       pending--;
       if(pending===0){
         saveAll();
+        // Bulk upsert alle nye items til cloud
+        const _allNew = [...gradedData,...sealedData,...rawData];
+        _allNew.forEach(it => {
+          const t = gradedData.find(x=>x.id===it.id)?'graded_items':sealedData.find(x=>x.id===it.id)?'sealed_items':'raw_items';
+          upsertItem(t, it);
+        });
         const parts=[];
         if(gAdd>0) parts.push(`${gAdd} graderede`);
         if(sAdd>0) parts.push(`${sAdd} sealed`);
@@ -1513,6 +1691,7 @@ async function runSingleAnalysis(itemId){
     if(result){
       aiCache[itemId] = result;
       saveAll();
+      upsertAI(itemId, result);
       expandedRow = itemId;
       render();
       showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
@@ -1564,7 +1743,7 @@ async function runBatchAnalysis(){
     updateProg(`[${tabLabel}] Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`);
     try{
       const result = await analyseItem(item);
-      if(result){ aiCache[item.id]=result; saveAll(); }
+      if(result){ aiCache[item.id]=result; saveAll(); upsertAI(item.id, result); }
     } catch(e){
       const msg=(e.message||'fejl').substring(0,60);
       updateProg(`<span style="color:var(--red)">[${tabLabel}] Fejl på "${esc(item.productName.substring(0,30))}": ${esc(msg)} — fortsætter...</span>`);
@@ -2585,7 +2764,11 @@ function submitForm(){
   if(activeTab==='graded') gradedData.push(item);
   else if(activeTab==='raw') rawData.push(item);
   else sealedData.push(item);
-  saveAll(); closeModal(); render();
+  saveAll();
+  // Cloud sync
+  const _tbl = activeTab==='graded'?'graded_items':activeTab==='raw'?'raw_items':'sealed_items';
+  upsertItem(_tbl, item);
+  closeModal(); render();
   showToast('✅ Tilføjet: '+name);
 }
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
@@ -2595,11 +2778,14 @@ function closeModal(){ document.getElementById('modalBackdrop').classList.remove
 // ═══════════════════════════════════════════════════════
 function deleteItem(id){
   if(!confirm('Slet denne post?')) return;
+  const _delTbl = activeTab==='graded'?'graded_items':activeTab==='sealed'?'sealed_items':'raw_items';
   if(activeTab==='graded') gradedData=gradedData.filter(i=>i.id!==id);
   else if(activeTab==='sealed') sealedData=sealedData.filter(i=>i.id!==id);
   else rawData=rawData.filter(i=>i.id!==id);
   delete aiCache[id];
-  saveAll(); render();
+  saveAll();
+  deleteItem(_delTbl, id);
+  render();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2896,5 +3082,36 @@ document.getElementById('langSel').value = currentLang;
 applyLang();
 switchTab('overview');
 </script>
+
+<!-- AUTH MODAL -->
+<div class="auth-overlay hidden" id="authOverlay">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+        <path d="M16 2 L28 7 L28 17 Q28 25 16 30 Q4 25 4 17 L4 7 Z" fill="var(--primary)" opacity="0.18"/>
+        <path d="M16 2 L28 7 L28 17 Q28 25 16 30 Q4 25 4 17 L4 7 Z" stroke="var(--primary)" stroke-width="2" fill="none" stroke-linejoin="round"/>
+        <path d="M10 10 L16 22 L22 10" stroke="var(--teal)" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span>Vaultr</span>
+    </div>
+    <div class="auth-tabs">
+      <div class="auth-tab active" id="tabLogin" onclick="switchAuthTab('login')">Log ind</div>
+      <div class="auth-tab" id="tabSignup" onclick="switchAuthTab('signup')">Opret konto</div>
+    </div>
+    <div id="authLoginForm">
+      <div class="auth-field"><label>Email</label><input type="email" id="authEmail" placeholder="din@email.dk" autocomplete="email"/></div>
+      <div class="auth-field"><label>Adgangskode</label><input type="password" id="authPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')submitAuth()"/></div>
+      <button class="auth-submit" onclick="submitAuth()">Log ind</button>
+      <div class="auth-err" id="authErr"></div>
+    </div>
+    <div id="authSignupForm" style="display:none">
+      <div class="auth-field"><label>Email</label><input type="email" id="authEmailS" placeholder="din@email.dk" autocomplete="email"/></div>
+      <div class="auth-field"><label>Adgangskode</label><input type="password" id="authPasswordS" placeholder="Min. 6 tegn" autocomplete="new-password" onkeydown="if(event.key==='Enter')submitSignup()"/></div>
+      <button class="auth-submit" onclick="submitSignup()">Opret konto</button>
+      <div class="auth-err" id="authErrS"></div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
