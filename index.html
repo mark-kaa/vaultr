@@ -892,19 +892,17 @@ if(!localStorage.getItem('pf_api_key')) localStorage.setItem('pf_api_key', _dk);
 let apiKey = localStorage.getItem('pf_api_key');
 function initApiKey(){
   if(apiKey){
-    document.getElementById('apiKeyInput').value = apiKey;
-    document.getElementById('keyStatus').textContent = t('api_active');
-    document.getElementById('keyStatus').classList.add('ok');
-    document.getElementById('batchBtn').disabled = false;
+    const inp = document.getElementById('apiKeyInput'); if(inp) inp.value = apiKey;
+    const ks = document.getElementById('keyStatus'); if(ks){ ks.textContent = t('api_active'); ks.classList.add('ok'); }
+    const bb = document.getElementById('batchBtn'); if(bb) bb.disabled = false;
   }
 }
 function saveApiKey(){
   apiKey = document.getElementById('apiKeyInput').value.trim();
   if(!apiKey){ showToast(t('no_key_entered')); return; }
   localStorage.setItem('pf_api_key', apiKey);
-  document.getElementById('keyStatus').textContent = t('api_active');
-  document.getElementById('keyStatus').classList.add('ok');
-  document.getElementById('batchBtn').disabled = false;
+  const ks = document.getElementById('keyStatus'); if(ks){ ks.textContent = t('api_active'); ks.classList.add('ok'); }
+  const bb = document.getElementById('batchBtn'); if(bb) bb.disabled = false;
   showToast(t('saved_key'));
   render();
 }
