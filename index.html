@@ -135,7 +135,9 @@ td.num.gold{color:var(--primary)}
 .pill-psa9{background:#16652020;color:var(--green)}
 .pill-psa8{background:#c25d0020;color:var(--orange)}
 .pill-bgs{background:#6b3fa020;color:var(--purple)}
+.pill-bgs-black{background:linear-gradient(135deg,#1a1a1a,#2d2d2d);color:#ffd700;border:1px solid #ffd70060;font-weight:700}
 .pill-cgc{background:#0c5a4020;color:#34d399}
+.pill-tag{background:#7c3a1020;color:#fb923c}
 .pill-cat{font-size:.68rem;padding:.1rem .4rem}
 .pill-poke{background:#e8b83015;color:#c49a00}
 .pill-op{background:#dc143c15;color:#e05a70}
@@ -1652,13 +1654,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
 
 // ════════════════════════════════════════════════════════
-// FEATURE C: Collections per spil
+// FEATURE C: TCG Oversigt
 // ════════════════════════════════════════════════════════
 function renderPerGameModule(){
   const all = [...gradedData,...sealedData,...rawData];
-  if(all.length === 0) return '<div style="font-size:.8rem;color:var(--muted)">Upload data for at se opdeling per spil.</div>';
+  if(all.length === 0) return '<div style="font-size:.8rem;color:var(--muted)">Upload data for at se TCG oversigt.</div>';
 
-  // Grupper per kategori/spil
+  // Grupper per TCG/kategori
   const games = {};
   all.forEach(i => {
     const g = i.category || 'Andet';
@@ -1716,7 +1718,7 @@ function renderPerGameModule(){
     <div style="overflow-x:auto">
     <table class="dash-table">
       <thead><tr>
-        <th>Spil</th>
+        <th>TCG</th>
         <th class="num">Poster</th>
         <th class="num">Markedsværdi</th>
         <th class="num">P/L %</th>
@@ -1806,7 +1808,31 @@ function splitLine(line){
   res.push(cur); return res;
 }
 function pNum(s){ return parseFloat((s||'').replace(/,/g,''))||0; }
+// ── Grade-parser: udtræk udbyder, numerisk score og label ──
+function parseGradeField(gradeStr){
+  if(!gradeStr || gradeStr==='Ungraded') return { gradingProvider:'', gradeScore:null, gradeLabel:'Ungraded' };
+  const s = gradeStr.trim();
+  // Kendte udbydere (rækkefølge vigtig — længere matches først)
+  const providers = ['PSA','BGS','CGC','TAG','ACE','AGS'];
+  let provider = '';
+  for(const p of providers){
+    if(s.toUpperCase().startsWith(p)){ provider = p; break; }
+  }
+  if(!provider) return { gradingProvider:'', gradeScore:null, gradeLabel:s };
+  // Udtræk numerisk score — fx "10.0", "9.5", "8"
+  const scoreMatch = s.match(/([\d]+(?:\.\d+)?)/); 
+  const score = scoreMatch ? parseFloat(scoreMatch[1]) : null;
+  // Label = alt efter score-nummeret, trimmet
+  const labelMatch = s.match(/[\d]+(?:\.\d+)?\s*(.*)/);
+  const label = labelMatch ? labelMatch[1].trim() : '';
+  return { gradingProvider: provider, gradeScore: score, gradeLabel: label || s };
+}
+
 function csvRowToItem(row){
+  const gradeRaw = row['Grade']||'';
+  const { gradingProvider, gradeScore, gradeLabel } = parseGradeField(gradeRaw);
+  // Håndter skiftende kolonnenavn for markedspris (dato kan variere)
+  const mktKey = Object.keys(row).find(k => k.startsWith('Market Price')) || '';
   return {
     id: Math.random().toString(36).slice(2)+Date.now().toString(36),
     portfolioName: row['Portfolio Name']||'',
@@ -1816,17 +1842,40 @@ function csvRowToItem(row){
     cardNumber:    row['Card Number']||'',
     rarity:        row['Rarity']||'',
     variance:      row['Variance']||'',
-    grade:         row['Grade']||'',
+    grade:         gradeRaw,
+    gradingProvider: gradingProvider,
+    gradeScore:    gradeScore,
+    gradeLabel:    gradeLabel,
     condition:     row['Card Condition']||'',
     costPaid:      pNum(row['Average Cost Paid']),
     quantity:      parseInt(row['Quantity'])||1,
-    marketPrice:   pNum(row['Market Price (As of 2026-03-15)']),
+    marketPrice:   pNum(mktKey ? row[mktKey] : row['Market Price (As of 2026-03-15)']),
     priceOverride: pNum(row['Price Override'])||0,
     watchlist:     (row['Watchlist']||'').toLowerCase()==='true',
     dateAdded:     row['Date Added']||'',
     notes:         (row['Notes']||'').replace(/;/g,'').trim(),
   };
 }
+// ── Smart CSV kategorisering baseret på Portfolio Name ──
+function detectCategory(item){
+  const pf = (item.portfolioName||'').toLowerCase().trim();
+  // Eksplicit Portfolio Name-match (fra Collectr/CardTrader eksport)
+  if(pf.includes('graded')) return 'graded';
+  if(pf.includes('sealed')) return 'sealed';
+  if(pf.includes('raw'))    return 'raw';
+  // Ingen Portfolio Name sat — auto-detect fra data
+  const hasGrade = item.grade && item.grade !== 'Ungraded' && item.grade !== '';
+  const hasCardNumber = item.cardNumber && item.cardNumber !== '';
+  const nameLower = (item.productName||'').toLowerCase();
+  // Sealed-indikatorer: ingen kortnummer + sealed produktnavn-keywords
+  const sealedKeywords = ['booster box','elite trainer box','etb','case','collection box','blister','tin','bundle','display','booster bundle'];
+  const looksSealed = !hasCardNumber && sealedKeywords.some(k => nameLower.includes(k));
+  if(hasGrade && item.gradingProvider) return 'graded';   // har udbyder = graderet
+  if(hasGrade) return 'graded';                           // har grade-felt = graderet
+  if(looksSealed) return 'sealed';                        // ser ud som sealed produkt
+  return 'raw';                                           // default: raw/watchlist
+}
+
 function handleCSV(input){
   const files=Array.from(input.files); let gAdd=0,sAdd=0,rAdd=0,pending=files.length;
   files.forEach(file=>{
@@ -1836,17 +1885,16 @@ function handleCSV(input){
       rows.forEach(row=>{
         const item=csvRowToItem(row);
         if(!item.productName) return;
-        const pf=(item.portfolioName||'').toLowerCase();
-        const isRaw = pf.includes('raw') || (item.grade==='Ungraded' && !pf.includes('sealed') && !pf.includes('graded'));
-        if(pf.includes('graded')||(item.grade&&item.grade!=='Ungraded')){
+        const cat = detectCategory(item);
+        if(cat==='graded'){
           const dup=gradedData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.grade===item.grade);
           if(!dup){gradedData.push(item);gAdd++;}
-        } else if(isRaw){
-          const dup=rawData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.set===item.set);
-          if(!dup){rawData.push(item);rAdd++;}
-        } else {
+        } else if(cat==='sealed'){
           const dup=sealedData.find(d=>d.productName===item.productName&&d.set===item.set);
           if(!dup){sealedData.push(item);sAdd++;}
+        } else {
+          const dup=rawData.find(d=>d.productName===item.productName&&d.cardNumber===item.cardNumber&&d.set===item.set);
+          if(!dup){rawData.push(item);rAdd++;}
         }
       });
       pending--;
@@ -1886,11 +1934,30 @@ const esc   = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').repl
 function gradeClass(g){
   if(!g||g==='Ungraded') return '';
   const l=g.toLowerCase();
-  if(l.includes('psa 10')||l.includes('gem')) return 'pill-psa10';
-  if(l.includes('psa 9')||l.includes('mint')) return 'pill-psa9';
-  if(l.includes('psa 8')||l.includes('nm')) return 'pill-psa8';
-  if(l.includes('bgs')) return 'pill-bgs';
-  if(l.includes('cgc')) return 'pill-cgc';
+  // PSA grades
+  if(l.startsWith('psa')){
+    if(l.includes('10')) return 'pill-psa10';
+    if(l.includes('9.5')||l.includes(' 9 ')) return 'pill-psa9';
+    if(l.includes('8')) return 'pill-psa8';
+    return 'pill-psa9';
+  }
+  // BGS grades
+  if(l.startsWith('bgs')){
+    if(l.includes('10')||l.includes('black label')) return 'pill-bgs-black';
+    if(l.includes('9.5')) return 'pill-psa10';
+    return 'pill-bgs';
+  }
+  // CGC grades
+  if(l.startsWith('cgc')){
+    if(l.includes('10')||l.includes('pristine')) return 'pill-psa10';
+    return 'pill-cgc';
+  }
+  // TAG, ACE, AGS — generisk styling
+  if(l.startsWith('tag')||l.startsWith('ace')||l.startsWith('ags')) return 'pill-tag';
+  // Fallback: gem / mint
+  if(l.includes('gem')||l.includes('pristine')) return 'pill-psa10';
+  if(l.includes('mint')) return 'pill-psa9';
+  if(l.includes('nm')) return 'pill-psa8';
   return 'pill-psa9';
 }
 function catClass(c){
@@ -2686,9 +2753,9 @@ function renderDashboard(){
 
 
 
-  <!-- MODULE: Collections per spil -->
+  <!-- MODULE: TCG Oversigt -->
   <div class="dash-module" data-module-id="per-game" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🎮 Collections per spil</span><button class="module-toggle" onclick="toggleModule('per-game')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 TCG Oversigt</span><button class="module-toggle" onclick="toggleModule('per-game')">－</button></div>
     <div class="module-body">
       ${renderPerGameModule()}
     </div>
