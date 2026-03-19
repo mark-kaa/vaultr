@@ -1860,23 +1860,27 @@ function csvRowToItem(row){
   };
 }
 // ── Smart CSV kategorisering baseret på Portfolio Name ──
+// Returnerer: 'graded' | 'sealed' | 'raw' | 'watchlist'
 function detectCategory(item){
   const pf = (item.portfolioName||'').toLowerCase().trim();
-  // Eksplicit Portfolio Name-match (fra Collectr/CardTrader eksport)
+  // Eksplicit Portfolio Name-match
   if(pf.includes('graded')) return 'graded';
   if(pf.includes('sealed')) return 'sealed';
   if(pf.includes('raw'))    return 'raw';
-  // Ingen Portfolio Name sat — auto-detect fra data
+  // Tomt Portfolio Name = watchlist (costPaid === 0 og watchlist-flag)
+  if(!pf){
+    if(item.watchlist || item.costPaid === 0) return 'watchlist';
+  }
+  // Auto-detect fra data
   const hasGrade = item.grade && item.grade !== 'Ungraded' && item.grade !== '';
   const hasCardNumber = item.cardNumber && item.cardNumber !== '';
   const nameLower = (item.productName||'').toLowerCase();
-  // Sealed-indikatorer: ingen kortnummer + sealed produktnavn-keywords
   const sealedKeywords = ['booster box','elite trainer box','etb','case','collection box','blister','tin','bundle','display','booster bundle'];
   const looksSealed = !hasCardNumber && sealedKeywords.some(k => nameLower.includes(k));
-  if(hasGrade && item.gradingProvider) return 'graded';   // har udbyder = graderet
-  if(hasGrade) return 'graded';                           // har grade-felt = graderet
-  if(looksSealed) return 'sealed';                        // ser ud som sealed produkt
-  return 'raw';                                           // default: raw/watchlist
+  if(hasGrade && item.gradingProvider) return 'graded';
+  if(hasGrade) return 'graded';
+  if(looksSealed) return 'sealed';
+  return 'raw';
 }
 
 // ── CSV Import Modal ──
@@ -1904,13 +1908,14 @@ function handleCSV(input){
 
 function showCSVImportModal(rows, fileNames){
   // Forhåndsvis hvad der ville blive importeret
-  let gCount=0, sCount=0, rCount=0;
+  let gCount=0, sCount=0, rCount=0, wCount=0;
   const previewItems = rows.map(row => {
     const item = csvRowToItem(row);
     if(!item.productName) return null;
     const cat = detectCategory(item);
     if(cat==='graded') gCount++;
     else if(cat==='sealed') sCount++;
+    else if(cat==='watchlist') wCount++;
     else rCount++;
     return { item, cat };
   }).filter(Boolean);
@@ -1926,20 +1931,25 @@ function showCSVImportModal(rows, fileNames){
       <div style="font-size:.78rem;color:var(--muted);margin-bottom:1.25rem">${fileNames.join(', ')}</div>
 
       <!-- Preview counts -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.6rem;margin-bottom:1.25rem">
-        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
-          <div style="font-size:1.3rem;font-weight:800;color:var(--blue)">${gCount}</div>
-          <div style="font-size:.7rem;color:var(--muted)">Graderede</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin-bottom:1.25rem">
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.6rem;text-align:center">
+          <div style="font-size:1.2rem;font-weight:800;color:var(--blue)">${gCount}</div>
+          <div style="font-size:.68rem;color:var(--muted)">Graderede</div>
         </div>
-        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
-          <div style="font-size:1.3rem;font-weight:800;color:var(--purple)">${sCount}</div>
-          <div style="font-size:.7rem;color:var(--muted)">Sealed</div>
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.6rem;text-align:center">
+          <div style="font-size:1.2rem;font-weight:800;color:var(--purple)">${sCount}</div>
+          <div style="font-size:.68rem;color:var(--muted)">Sealed</div>
         </div>
-        <div style="background:var(--surface2);border-radius:.5rem;padding:.65rem;text-align:center">
-          <div style="font-size:1.3rem;font-weight:800;color:var(--green)">${rCount}</div>
-          <div style="font-size:.7rem;color:var(--muted)">Raw</div>
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.6rem;text-align:center">
+          <div style="font-size:1.2rem;font-weight:800;color:var(--green)">${rCount}</div>
+          <div style="font-size:.68rem;color:var(--muted)">Raw</div>
+        </div>
+        <div style="background:var(--surface2);border-radius:.5rem;padding:.6rem;text-align:center">
+          <div style="font-size:1.2rem;font-weight:800;color:var(--muted)">${wCount}</div>
+          <div style="font-size:.68rem;color:var(--faint)">Watchlist</div>
         </div>
       </div>
+      ${wCount > 0 ? '<div style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem;padding:.5rem .65rem;background:var(--surface2);border-radius:.4rem">👁 Watchlist-poster importeres ikke i porteføljen — de tæller ikke med i kostpris eller P/L.</div>' : ''}
 
       ${hasExisting ? `
       <!-- Eksisterende data advarsel -->
@@ -1990,8 +2000,9 @@ async function executeCSVImport(){
     await clearAllCloudData();
   }
 
-  let gAdd=0, sAdd=0, rAdd=0;
+  let gAdd=0, sAdd=0, rAdd=0, wSkip=0;
   previewItems.forEach(({ item, cat }) => {
+    if(cat === 'watchlist'){ wSkip++; return; }  // spring watchlist over
     if(cat === 'graded'){
       const dup = gradedData.find(d => d.productName===item.productName && d.cardNumber===item.cardNumber && d.grade===item.grade);
       if(!dup){ gradedData.push(item); gAdd++; }
