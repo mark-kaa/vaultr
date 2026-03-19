@@ -1964,7 +1964,7 @@ function showCSVImportModal(rows, fileNames){
     return { item, cat };
   }).filter(Boolean);
 
-  const hasExisting = gradedData.length + sealedData.length + rawData.length > 0;
+  const hasExisting = true; // Vis altid Erstat/Merge valg
 
   const modal = document.createElement('div');
   modal.id = 'csvImportModal';
