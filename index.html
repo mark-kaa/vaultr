@@ -770,6 +770,16 @@ async function loadFromSupabase() {
   }
 }
 
+// ── Ryd al cloud-data for denne bruger (bruges ved CSV replace) ──
+async function clearAllCloudData() {
+  if(!supaUser) return;
+  await Promise.all([
+    supa.from('graded_items').delete().eq('user_id', supaUser.id),
+    supa.from('sealed_items').delete().eq('user_id', supaUser.id),
+    supa.from('raw_items').delete().eq('user_id', supaUser.id),
+  ]);
+}
+
 // ── Upsert et enkelt item til Supabase ──
 async function upsertItem(table, item) {
   if(!supaUser) return;
@@ -1964,7 +1974,7 @@ function showCSVImportModal(rows, fileNames){
   _pendingCSVParsed = previewItems;
 }
 
-function executeCSVImport(){
+async function executeCSVImport(){
   const modal = document.getElementById('csvImportModal');
   const modeEl = modal ? modal.querySelector('input[name="csvMode"]:checked') : null;
   const mode = modeEl ? modeEl.value : 'replace';
@@ -1972,9 +1982,12 @@ function executeCSVImport(){
   modal && modal.remove();
 
   if(mode === 'replace'){
+    // 1) Ryd lokalt
     gradedData.length = 0;
     sealedData.length = 0;
     rawData.length = 0;
+    // 2) Ryd cloud (vent på det er færdig før vi uploader nyt)
+    await clearAllCloudData();
   }
 
   let gAdd=0, sAdd=0, rAdd=0;
@@ -1991,13 +2004,15 @@ function executeCSVImport(){
     }
   });
 
+  // Gem lokalt
   saveAll();
-  // Cloud sync
-  const _allNew = mode === 'replace' ? [...gradedData,...sealedData,...rawData] : previewItems.map(p=>p.item);
-  _allNew.forEach(it => {
+
+  // Cloud sync — upsert alle nye items
+  const toSync = [...gradedData, ...sealedData, ...rawData];
+  for(const it of toSync){
     const t = gradedData.find(x=>x.id===it.id)?'graded_items':sealedData.find(x=>x.id===it.id)?'sealed_items':'raw_items';
-    upsertItem(t, it);
-  });
+    await upsertItem(t, it);
+  }
 
   const parts = [];
   if(gAdd>0) parts.push(`${gAdd} graderede`);
