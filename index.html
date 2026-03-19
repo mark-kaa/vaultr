@@ -161,7 +161,28 @@ tbody tr:hover .btn-del{opacity:1}
 
 /* ── AI Detail panel (expandable row) ── */
 .ai-detail-row td{padding:0!important;border-bottom:2px solid color-mix(in srgb,var(--purple) 30%,var(--border))}
-.ai-detail-inner{padding:.75rem 1rem .85rem;background:color-mix(in srgb,var(--purple) 6%,var(--surface));border-left:3px solid var(--purple)}
+.ai-detail-inner{padding:.75rem 1rem .85rem;background:color-mix(in srgb,var(--purple) 6%,var(--surface));border-left:3px solid var(--purple);display:block}
+.ai-detail-inner.has-card-img{display:flex;gap:1rem;align-items:flex-start}
+.card-thumb-wrap{flex-shrink:0;width:120px;cursor:pointer;transition:all var(--trans)}
+.card-thumb-wrap.card-thumb-zoomed{width:220px;z-index:10}
+.card-thumb-img{width:100%;border-radius:.5rem;box-shadow:0 4px 16px rgba(0,0,0,.4);transition:transform var(--trans)}
+.card-thumb-img:hover{transform:scale(1.04)}
+.ai-detail-main{flex:1;min-width:0}
+/* Period filter buttons */
+.period-filter-row{display:flex;gap:.3rem;flex-wrap:wrap;margin-bottom:.6rem}
+.period-btn{padding:.2rem .55rem;border-radius:.35rem;font-size:.72rem;font-weight:700;color:var(--muted);background:var(--surface2);border:1px solid var(--border);cursor:pointer;transition:all var(--trans)}
+.period-btn:hover{border-color:var(--primary);color:var(--primary)}
+.period-btn.active{background:var(--primary);color:#000;border-color:var(--primary)}
+/* Market Movers module */
+.market-movers-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.mover-item{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;background:var(--surface2);border-radius:.4rem;border:1px solid var(--border)}
+.mover-item.up{border-left:3px solid var(--green)}
+.mover-item.down{border-left:3px solid var(--red)}
+.mover-name{flex:1;font-size:.75rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:130px}
+.mover-price{font-size:.78rem;font-weight:700;color:var(--text)}
+.mover-chg{font-size:.72rem;font-weight:700;min-width:52px;text-align:right}
+.mover-chg.up{color:var(--green)}
+.mover-chg.down{color:var(--red)}
 .ai-detail-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem}
 .ai-detail-title{font-size:.8rem;font-weight:700;color:var(--purple)}
 .ai-detail-close{color:var(--muted);padding:.1rem .3rem;border-radius:.25rem;font-size:.75rem;transition:all var(--trans)}
@@ -640,7 +661,7 @@ async function fetchTCGdex(item){
       const idx = arr.findIndex(i=>i.id===item.id);
       if(idx>=0){ arr[idx].rarity = tcgRarity; saveAll(); }
     }
-    return { id: d.id, name: d.name, cm, set: d.set?.name, rarity: tcgRarity };
+    return { id: d.id, name: d.name, cm, set: d.set?.name, rarity: tcgRarity, image: d.image || null };
   }
 
   // Hjælper: hent første hit med pris fra en liste (parallelt for hastighed)
@@ -935,6 +956,84 @@ async function loadTopLivePrices(){
 
 // ═══════════════════════════════════════════════════════
 // STATE
+// ═══════════════════════════════════════════════════════
+// ── FEATURE 1: Periode-filter til Kapitalforbrug-chart ──
+window._monthlyPeriod = window._monthlyPeriod || 'MAX';
+function setMonthlyPeriod(period, btn){
+  window._monthlyPeriod = period;
+  // Opdater aktiv knap
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  if(btn) btn.classList.add('active');
+  // Gen-render kun monthly chart uden at genopbygge hele dashboardet
+  const all = [...gradedData, ...sealedData, ...rawData];
+  const monthly = {};
+  all.forEach(i=>{
+    if(!i.dateAdded) return;
+    const d=new Date(i.dateAdded), k=d.getFullYear()+'-'+(''+(d.getMonth()+1)).padStart(2,'0');
+    monthly[k]=(monthly[k]||0)+totC(i);
+  });
+  const allKeys = Object.keys(monthly).sort();
+  function _filterMK(keys, p){
+    if(p==='MAX') return keys;
+    const cutMap={'1M':1,'3M':3,'6M':6,'1Y':12};
+    const months=cutMap[p]||12;
+    const now=new Date();
+    const cutoff=new Date(now.getFullYear(),now.getMonth()-months+1,1);
+    const cutStr=cutoff.getFullYear()+'-'+(''+(cutoff.getMonth()+1)).padStart(2,'0');
+    return keys.filter(k=>k>=cutStr);
+  }
+  const filteredKeys = _filterMK(allKeys, period);
+  if(!filteredKeys.length) return;
+  const cs=getComputedStyle(document.documentElement);
+  const clrGold=cs.getPropertyValue('--primary').trim()||'#e8b830';
+  const clrMuted=cs.getPropertyValue('--muted').trim()||'#6b7a99';
+  const clrBorder=cs.getPropertyValue('--border').trim()||'#252d42';
+  if(window.dashCharts && dashCharts.monthly){
+    dashCharts.monthly.data.labels = filteredKeys.map(m=>{
+      const [y,mo]=m.split('-');
+      return new Date(y,mo-1).toLocaleDateString('da-DK',{month:'short',year:'2-digit'});
+    });
+    dashCharts.monthly.data.datasets[0].data = filteredKeys.map(m=>monthly[m]||0);
+    dashCharts.monthly.update();
+  }
+}
+
+// ── FEATURE 2: Market Movers render ──
+function renderMarketMovers(){
+  const entries = Object.entries(liveCache)
+    .filter(([id,d]) => d.tcgdex?.cm?.avg1 && d.tcgdex?.cm?.avg7)
+    .map(([id,d]) => {
+      const cm = d.tcgdex.cm;
+      const cur = cm.averageSellPrice || cm.avg1;
+      const ref = cm.avg7;
+      const chgPct = ref ? ((cur - ref) / ref * 100) : 0;
+      const allItems = [...gradedData, ...sealedData, ...rawData];
+      const item = allItems.find(i => i.id === id);
+      const name = item?.productName || d.tcgdex.name || id;
+      return { id, name, cur, chgPct };
+    })
+    .filter(e => Math.abs(e.chgPct) > 0.1)
+    .sort((a,b) => Math.abs(b.chgPct) - Math.abs(a.chgPct))
+    .slice(0, 10);
+
+  if(!entries.length) return `<div style="font-size:.8rem;color:var(--muted);padding:.4rem 0">Ingen prisdata endnu — klik Opdatér eller hent live priser fra Live Priser-modulet.</div>`;
+
+  const items = entries.map(e => {
+    const dir = e.chgPct >= 0 ? 'up' : 'down';
+    const arrow = dir === 'up' ? '↑' : '↓';
+    const sign = dir === 'up' ? '+' : '';
+    return `<div class="mover-item ${dir}">
+      <span style="font-size:.85rem">${dir==='up'?'📈':'📉'}</span>
+      <span class="mover-name" title="${esc(e.name)}">${esc(e.name.substring(0,22))}</span>
+      <span class="mover-price">€${Number(e.cur).toFixed(2)}</span>
+      <span class="mover-chg ${dir}">${arrow} ${sign}${e.chgPct.toFixed(1)}%</span>
+    </div>`;
+  }).join('');
+
+  return `<div class="market-movers-grid">${items}</div>
+    <div style="font-size:.67rem;color:var(--faint);margin-top:.5rem">Prisændring vs. 7-dages CM gennemsnit</div>`;
+}
+
 // ═══════════════════════════════════════════════════════
 let activeTab = 'graded';
 let searchQ   = '';
@@ -1629,14 +1728,25 @@ function renderDashboard(){
     cats[c].cost+=totC(i); cats[c].val+=totV(i);
   });
 
-  // Monthly spend
-  const monthly={}, monthKeys=[];
+  // Monthly spend — alle måneder (periode-filter sker i chart-rendering)
+  const monthly={}, allMonthKeys=[];
   all.forEach(i=>{
     if(!i.dateAdded) return;
     const d=new Date(i.dateAdded), k=d.getFullYear()+'-'+(''+(d.getMonth()+1)).padStart(2,'0');
     monthly[k]=(monthly[k]||0)+totC(i);
   });
-  Object.keys(monthly).sort().slice(-12).forEach(k=>monthKeys.push(k));
+  Object.keys(monthly).sort().forEach(k=>allMonthKeys.push(k));
+  // Apply period filter
+  const _activePeriod = window._monthlyPeriod || 'MAX';
+  function _filterMonthKeys(keys, period){
+    if(period==='MAX') return keys;
+    const now=new Date(), cutMap={'1M':1,'3M':3,'6M':6,'1Y':12};
+    const months=cutMap[period]||12;
+    const cutoff=new Date(now.getFullYear(),now.getMonth()-months+1,1);
+    const cutStr=cutoff.getFullYear()+'-'+(''+(cutoff.getMonth()+1)).padStart(2,'0');
+    return keys.filter(k=>k>=cutStr);
+  }
+  const monthKeys = _filterMonthKeys(allMonthKeys, _activePeriod);
 
   // Top performers
   const withPL = all.filter(i=>totC(i)>0);
@@ -1706,7 +1816,19 @@ function renderDashboard(){
   <div class="dash-module" data-module-id="monthly" draggable="true">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule('monthly')">－</button></div>
     <div class="module-body">
-      <div class="chart-card"><div class="chart-title">Månedlig kostpris (seneste 12 mdr.)</div><div class="chart-wrap"><canvas id="chartMonthly"></canvas></div></div>
+      <div class="chart-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
+          <div class="chart-title" style="margin-bottom:0">Kostpris akkumuleret</div>
+          <div class="period-filter-row" style="margin-bottom:0" id="periodBtns">
+            <button class="period-btn" onclick="setMonthlyPeriod('1M',this)">1M</button>
+            <button class="period-btn" onclick="setMonthlyPeriod('3M',this)">3M</button>
+            <button class="period-btn" onclick="setMonthlyPeriod('6M',this)">6M</button>
+            <button class="period-btn" onclick="setMonthlyPeriod('1Y',this)">1ÅR</button>
+            <button class="period-btn active" onclick="setMonthlyPeriod('MAX',this)">MAX</button>
+          </div>
+        </div>
+        <div class="chart-wrap"><canvas id="chartMonthly"></canvas></div>
+      </div>
     </div>
     <div class="module-resize" onmousedown="startResize(event,'monthly')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
@@ -1852,6 +1974,23 @@ function renderDashboard(){
       <div style="margin-top:.6rem;font-size:.68rem;color:var(--faint)">Kilde: <a href="https://tcgdex.dev" target="_blank" style="color:var(--teal)">TCGdex API</a> (Cardmarket EU data, opdateres dagligt) · <a href="https://www.cardmarket-api.com" target="_blank" style="color:var(--teal)">cardmarket-api.com</a> (DE/FR/ES/IT, kræver API-nøgle)</div>
     </div>
     <div class="module-resize" onmousedown="startResize(event,'live-prices')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  </div>
+
+
+  <!-- MODULE: Market Movers -->
+  <div class="dash-module" data-module-id="market-movers" draggable="true">
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule('market-movers')">－</button></div>
+    <div class="module-body">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
+        <div style="font-size:.72rem;color:var(--muted)">Prisændringer vs. 7-dages gennemsnit (kun kort med live priser)</div>
+        <button class="btn-live" onclick="loadTopLivePrices().then(()=>{renderDashboard()})" style="font-size:.72rem;padding:.2rem .5rem">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
+          Opdatér
+        </button>
+      </div>
+      <div id="marketMoversContent">${renderMarketMovers()}</div>
+    </div>
+    <div class="module-resize" onmousedown="startResize(event,'market-movers')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
   </div><!-- end #dashModules -->
@@ -2063,8 +2202,18 @@ function renderAIDetailRow(item, colSpan){
   const ts=ai.timestamp?new Date(ai.timestamp).toLocaleString(currentLang==='da'?'da-DK':currentLang==='ja'?'ja-JP':currentLang==='ko'?'ko-KR':currentLang==='zh'?'zh-CN':'en-GB'):'';
   const citations=(ai.citations||[]).slice(0,3);
   const recIcon=rec===t('sell')||rec==='Sælg'||rec==='Sell'?'📤':(rec===t('grade')||rec==='Send til grading'||rec==='Send to grading')?'🏅':'📦';
+  // Kortbillede fra liveCache (TCGdex)
+  const cardImg = liveCache[item.id]?.tcgdex?.image || null;
+  const cardImgHtml = cardImg ? `
+    <div class="card-thumb-wrap">
+      <img src="${cardImg}/high.png" onerror="this.onerror=null;this.src='${cardImg}.png'" alt="${esc(item.productName)}" class="card-thumb-img" loading="lazy"
+        onclick="this.parentElement.classList.toggle('card-thumb-zoomed')" title="Klik for at forstørre"/>
+    </div>` : '';
+
   return `<tr class="ai-detail-row"><td colspan="${colSpan}">
-    <div class="ai-detail-inner">
+    <div class="ai-detail-inner ${cardImg ? 'has-card-img' : ''}">
+      ${cardImgHtml}
+      <div class="ai-detail-main">
       <div class="ai-detail-header">
         <span class="ai-detail-title">🤖 ${t('ai_analyse')} · ${esc(item.productName)}</span>
         <button class="ai-detail-close" onclick="toggleDetail('${item.id}')">✕ ${t('close')}</button>
@@ -2076,6 +2225,7 @@ function renderAIDetailRow(item, colSpan){
       <div class="eu-panel-wrap eu-panel-${item.id}">${renderEUPricePanel(item)}</div>
       ${citations.length?`<div class="ai-sources">${t('sources')}: ${citations.map(c=>{try{return `<a href="${esc(c)}" target="_blank" style="color:var(--blue)">${new URL(c).hostname}</a>`}catch(e){return esc(c)}}).join(' · ')}</div>`:''}
       ${ts?`<div class="ai-timestamp">${t('analysed')}: ${ts}</div>`:''}
+      </div><!-- end ai-detail-main -->
     </div>
   </td></tr>`;
 }
