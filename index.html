@@ -170,6 +170,14 @@ tbody tr:hover .btn-del{opacity:1}
 .btn-analyse:disabled{opacity:.4;cursor:not-allowed}
 .spin{display:inline-block;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* AI loading animation — Perplexity-style pulsing dots */
+.ai-thinking{display:inline-flex;align-items:center;gap:.18rem;padding:.1rem 0}
+.ai-thinking span{width:5px;height:5px;border-radius:50%;background:var(--purple);display:inline-block;animation:ai-dot 1.2s ease-in-out infinite}
+.ai-thinking span:nth-child(2){animation-delay:.2s}
+.ai-thinking span:nth-child(3){animation-delay:.4s}
+@keyframes ai-dot{0%,80%,100%{transform:scale(.6);opacity:.4}40%{transform:scale(1);opacity:1}}
+/* Sprog badge */
+.lang-pill{display:inline-flex;align-items:center;padding:.08rem .3rem;border-radius:.25rem;font-size:.6rem;font-weight:700;letter-spacing:.04em;background:color-mix(in srgb,var(--blue) 18%,transparent);color:var(--blue);margin-left:.25rem;vertical-align:middle}
 
 /* ── AI Detail panel (expandable row) ── */
 .ai-detail-row td{padding:0!important;border-bottom:2px solid color-mix(in srgb,var(--purple) 30%,var(--border))}
@@ -883,7 +891,8 @@ let sealedData  = JSON.parse(localStorage.getItem('pf_sealed')  || '[]');
 let rawData     = JSON.parse(localStorage.getItem('pf_raw')     || '[]');
 // AI analyses: { [itemId]: { recommendation, score, reasoning, dimensions, timestamp } }
 let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
-let expandedRow = null; // currently expanded AI detail row id
+let expandedRows = new Set(); // flere AI-paneler kan være åbne samtidig
+let expandedRow = null; // legacy
 // Detail panel tab state: { [itemId]: 'raw'|'graded'|'pop' } — in-memory only
 const detailTabState = {};
 
@@ -1931,7 +1940,7 @@ function clearSearch(){ document.getElementById('searchInput').value=''; documen
 // TAB
 // ═══════════════════════════════════════════════════════
 function switchTab(tab){
-  activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRow=null;
+  activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRows=new Set(); expandedRow=null;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const tabEl = document.getElementById('tab-'+tab); if(tabEl) tabEl.classList.add('active');
   const isOverview = tab==='overview';
@@ -2450,7 +2459,7 @@ async function runSingleAnalysis(itemId){
 
   // Update button to loading state
   const btn = document.getElementById('abtn-'+itemId);
-  if(btn){ btn.disabled=true; btn.innerHTML='<span class="spin">⟳</span> Analyserer...'; }
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="ai-thinking"><span></span><span></span><span></span></span> AI analyserer… (~3 sek)'; }
 
   try{
     const result = await analyseItem(item);
@@ -2458,8 +2467,13 @@ async function runSingleAnalysis(itemId){
       aiCache[itemId] = result;
       saveAll();
       upsertAI(itemId, result);
-      expandedRow = itemId;
+      expandedRows.add(itemId); expandedRow=itemId;
       render();
+      // Auto-hent live pris efter analyse — ingen ekstra klik
+      fetchLivePrice(item).then(()=>{
+        const wrap = document.querySelector('.eu-panel-wrap.eu-panel-'+itemId);
+        if(wrap) wrap.innerHTML = renderEUPricePanel(item);
+      }).catch(()=>{});
       showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
     } else {
       showToast('❌ Tomt svar fra API');
@@ -3468,11 +3482,21 @@ function renderAICell(item){
   const rec=ai.recommendation||'Uafgjort';
   const score=ai.overall_score||0;
   const cls=rec==='Sælg'||rec==='Sell'||rec===t('sell')?'score-sell':rec==='Send til grading'||rec==='Send to grading'||rec===t('grade')?'score-grade':score>=9?'score-grade':score>=7?'score-hold':'score-sell';
-  const expanded=expandedRow===item.id;
+  const expanded=expandedRows.has(item.id);
+  // Sprogindikator
+  const _nl=(item.productName||'').toLowerCase();
+  const _langTag = _nl.includes('(jp)') ? 'JP'
+    : _nl.includes('(de)') ? 'DE'
+    : _nl.includes('(fr)') ? 'FR'
+    : _nl.includes('(kr)')||_nl.includes('(ko)') ? 'KR'
+    : _nl.includes('(zh)')||_nl.includes('(cn)') ? 'CN'
+    : (item.language && item.language.toLowerCase()!=='english' && item.language!=='') ? item.language.substring(0,2).toUpperCase()
+    : null;
+  const _langHtml = (_langTag && _langTag!=='EN') ? `<span class="lang-pill">${_langTag}</span>` : '';
   return `<td class="ai-cell">
     <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
       <button class="score-badge ${cls}" onclick="toggleDetail('${item.id}')" title="${esc(ai.key_factor||'')}">
-        ${score}/10 · ${esc(rec)}${expanded?' ▲':' ▼'}
+        ${score}/10 · ${esc(rec)}${_langHtml}${expanded?' ▲':' ▼'}
       </button>
       <button class="btn-analyse" id="abtn-${item.id}" onclick="runSingleAnalysis('${item.id}')" title="Genanalysér">↺</button>
     </div>
@@ -3480,7 +3504,8 @@ function renderAICell(item){
 }
 
 function toggleDetail(id){
-  expandedRow = expandedRow===id ? null : id;
+  if(expandedRows.has(id)) expandedRows.delete(id); else expandedRows.add(id);
+  expandedRow = id;
   render();
 }
 
@@ -3595,7 +3620,7 @@ function renderPOPPanel(item) {
 
 function renderAIDetailRow(item, colSpan){
   const ai=aiCache[item.id];
-  if(!ai||expandedRow!==item.id) return '';
+  if(!ai||!expandedRows.has(item.id)) return '';
   const rec=ai.recommendation||'';
   const recCls=rec===t('sell')||rec==='Sælg'||rec==='Sell'?'ai-rec-sell':(rec===t('grade')||rec==='Send til grading'||rec==='Send to grading')?'ai-rec-grade':'ai-rec-hold';
   const dims=ai.dimensions||{};
