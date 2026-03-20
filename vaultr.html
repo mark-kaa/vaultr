@@ -1118,20 +1118,28 @@ async function fetchTCGdex(item){
   return null;
 }
 
-// ── cardmarket-api.com: EU land-specifikke priser (gratis tier: 100 req/dag) ──
-const CM_API_KEY = localStorage.getItem('pf_cmapi_key') || '';
+// ── RapidAPI: CardMarket API TCG — EU land-specifikke priser (gratis tier: 100 req/dag) ──
+function getCMApiKey(){ return localStorage.getItem('pf_cmapi_key') || ''; }
 async function fetchCardmarketAPI(item){
-  if(!CM_API_KEY) return null; // kræver nøgle
-  const name = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').trim());
+  const key = getCMApiKey();
+  if(!key) return null;
+  const name = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').replace(/\s*\(JP\)\s*/i,'').trim());
   try{
-    const res = await fetch(`https://www.cardmarket-api.com/pokemon/cards?search=${name}`,{
-      headers: { 'x-rapidapi-key': CM_API_KEY, 'x-rapidapi-host': 'cardmarket-api.com' }
+    const res = await fetch(`https://cardmarket-api-tcg.p.rapidapi.com/pokemon/cards/search?search=${name}&sort=relevance`,{
+      headers: {
+        'x-rapidapi-key': key,
+        'x-rapidapi-host': 'cardmarket-api-tcg.p.rapidapi.com',
+        'Content-Type': 'application/json'
+      }
     });
-    if(res.ok){
-      const d = await res.json();
-      const cards = d.data || d.cards || d;
-      if(Array.isArray(cards) && cards.length > 0) return cards[0];
-    }
+    if(!res.ok) return null;
+    const d = await res.json();
+    const cards = d.data || [];
+    if(!cards.length) return null;
+    // Find bedste match: foretruk kort med samme navn (case-insensitive)
+    const cleanName = (item.productName||'').replace(/\s+PSA.*$/i,'').toLowerCase().trim();
+    const match = cards.find(c => (c.name||'').toLowerCase() === cleanName) || cards[0];
+    return match;
   } catch(e){ console.warn('CM API fejl:', e); }
   return null;
 }
@@ -1224,18 +1232,21 @@ function renderEUPricePanel(item){
       ${t30 ? `<div class="eu-price-item"><div class="eu-price-flag">📆</div><div class="eu-price-country">30-dages</div><div class="eu-price-val">${fmtEURsimple(t30)}</div></div>` : ''}`;
   }
 
-  // cardmarket-api.com DE/FR/ES/IT priser
+  // RapidAPI CardMarket TCG — land-specifikke NM priser
   let cmApiHtml = '';
   if(cma){
+    const cm_prices = cma.prices?.cardmarket || {};
     const countries = [
-      {flag:'🇩🇪', key:'de', label:'DE'},
-      {flag:'🇫🇷', key:'fr', label:'FR'},
-      {flag:'🇪🇸', key:'es', label:'ES'},
-      {flag:'🇮🇹', key:'it', label:'IT'},
+      {flag:'🇩🇪', key:'lowest_near_mint_DE', label:'DE'},
+      {flag:'🇫🇷', key:'lowest_near_mint_FR', label:'FR'},
+      {flag:'🇪🇸', key:'lowest_near_mint_ES', label:'ES'},
+      {flag:'🇮🇹', key:'lowest_near_mint_IT', label:'IT'},
     ];
+    const globalNM = cm_prices.lowest_near_mint;
+    if(globalNM) cmApiHtml += `<div class="eu-price-item"><div class="eu-price-flag">🇪🇺</div><div class="eu-price-country">NM Global</div><div class="eu-price-val">${fmtEURsimple(globalNM)}</div></div>`;
     countries.forEach(c => {
-      const p = cma[`price_${c.key}`] || cma[c.key];
-      if(p) cmApiHtml += `<div class="eu-price-item"><div class="eu-price-flag">${c.flag}</div><div class="eu-price-country">${c.label}</div><div class="eu-price-val">${fmtEURsimple(p)}</div></div>`;
+      const p = cm_prices[c.key];
+      if(p) cmApiHtml += `<div class="eu-price-item"><div class="eu-price-flag">${c.flag}</div><div class="eu-price-country">${c.label} NM</div><div class="eu-price-val">${fmtEURsimple(p)}</div></div>`;
     });
   }
 
