@@ -156,6 +156,19 @@ td.num.gold{color:var(--primary)}
 .btn-del{opacity:0;padding:.2rem .4rem;border-radius:.3rem;font-size:.72rem;color:var(--muted);transition:all var(--trans)}
 tbody tr:hover .btn-del{opacity:1}
 .btn-del:hover{background:#b52a2a20;color:var(--red)}
+.btn-watch{opacity:.35;padding:.2rem .4rem;border-radius:.3rem;font-size:.8rem;color:var(--muted);transition:all var(--trans);background:none;border:none;cursor:pointer}
+tbody tr:hover .btn-watch{opacity:.7}
+.btn-watch.active,.btn-watch-on{opacity:1!important;color:var(--primary)!important;filter:drop-shadow(0 0 4px var(--primary))}
+.wl-target-input{width:72px;padding:.15rem .3rem;border-radius:.3rem;border:1px solid var(--border);background:var(--surface2);color:var(--text);font-size:.78rem;text-align:right}
+.wl-target-input:focus{outline:none;border-color:var(--primary)}
+.wl-dist-green{color:var(--teal);font-weight:700}
+.wl-dist-red{color:var(--muted)}
+.wl-alarm-badge{display:inline-block;padding:.08rem .35rem;border-radius:.25rem;font-size:.68rem;font-weight:700;background:#0c7a8530;color:var(--teal);border:1px solid var(--teal);animation:pulseGreen 1.4s infinite}
+@keyframes pulseGreen{0%,100%{box-shadow:0 0 0 0 #0c7a8540}50%{box-shadow:0 0 0 4px #0c7a8500}}
+.wl-empty{text-align:center;padding:3rem 1rem;color:var(--muted);font-size:.9rem}
+.wl-panel-header{display:flex;align-items:center;justify-content:space-between;padding:.5rem 0 .75rem;margin-bottom:.25rem}
+.wl-panel-title{font-size:1.05rem;font-weight:800;letter-spacing:-.01em}
+.wl-source-pill{font-size:.65rem;padding:.08rem .35rem;border-radius:.25rem;background:var(--surface2);color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
 
 /* ── AI Score cell ── */
 .ai-cell{min-width:160px}
@@ -666,6 +679,7 @@ tbody tr:hover .btn-del{opacity:1}
     <button class="tab" id="tab-graded" onclick="switchTab('graded')">🏅 Graderede kort</button>
     <button class="tab" id="tab-sealed" onclick="switchTab('sealed')">📦 Sealed produkter</button>
     <button class="tab" id="tab-raw" onclick="switchTab('raw')">🃏 Raw kort</button>
+    <button class="tab" id="tab-watchlist" onclick="switchTab('watchlist')">👁 Watchlist</button>
   </div>
 </div>
 
@@ -686,6 +700,7 @@ tbody tr:hover .btn-del{opacity:1}
 
 <!-- TABLE -->
 <div class="table-wrap" id="tablePanel"><div id="tableContainer"></div></div>
+<div id="watchlistPanel" style="display:none;padding:1rem 0"></div>
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
@@ -889,6 +904,8 @@ function tableForItem(item) {
 let gradedData  = JSON.parse(localStorage.getItem('pf_graded')  || '[]');
 let sealedData  = JSON.parse(localStorage.getItem('pf_sealed')  || '[]');
 let rawData     = JSON.parse(localStorage.getItem('pf_raw')     || '[]');
+let watchlistData = JSON.parse(localStorage.getItem('pf_watch') || '[]');
+// watchlistData items: { id, productName, set, cardNumber, rarity, condition, targetPrice, sourceTab, addedAt }
 // AI analyses: { [itemId]: { recommendation, score, reasoning, dimensions, timestamp } }
 let aiCache = JSON.parse(localStorage.getItem('pf_ai_cache') || '{}');
 let expandedRows = new Set(); // flere AI-paneler kan være åbne samtidig
@@ -901,6 +918,7 @@ function saveAll(){
   localStorage.setItem('pf_graded', JSON.stringify(gradedData));
   localStorage.setItem('pf_sealed', JSON.stringify(sealedData));
   localStorage.setItem('pf_raw',    JSON.stringify(rawData));
+  localStorage.setItem('pf_watch',  JSON.stringify(watchlistData));
   localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
   // Cloud sync sker per-item via upsertItem() / upsertAI()
 }
@@ -1943,13 +1961,17 @@ function switchTab(tab){
   activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRows=new Set(); expandedRow=null;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const tabEl = document.getElementById('tab-'+tab); if(tabEl) tabEl.classList.add('active');
-  const isOverview = tab==='overview';
-  const sb = document.getElementById('summaryBar'); if(sb&&sb.parentElement) sb.parentElement.style.display = isOverview?'none':'';
-  const tb = document.getElementById('toolbar'); if(tb) tb.style.display = isOverview?'none':'';
+  const isOverview  = tab==='overview';
+  const isWatchlist = tab==='watchlist';
+  const sb = document.getElementById('summaryBar'); if(sb&&sb.parentElement) sb.parentElement.style.display = (isOverview||isWatchlist)?'none':'';
+  const tb = document.getElementById('toolbar'); if(tb) tb.style.display = (isOverview||isWatchlist)?'none':'';
   const dp = document.getElementById('dashboardPanel'); if(dp) dp.classList.toggle('visible', isOverview);
-  const tp = document.getElementById('tablePanel'); if(tp) tp.style.display = isOverview?'none':'';
+  const tp = document.getElementById('tablePanel'); if(tp) tp.style.display = isWatchlist?'none':isOverview?'none':'';
+  const wp = document.getElementById('watchlistPanel'); if(wp) wp.style.display = isWatchlist?'':'none';
   const ap = document.getElementById('analyseProgress'); if(ap && !batchRunning) ap.innerHTML = '';
-  if(isOverview){ renderDashboard(); } else { render(); }
+  if(isOverview){ renderDashboard(); }
+  else if(isWatchlist){ renderWatchlist(); }
+  else { render(); }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2407,19 +2429,40 @@ ${item.variance?`- Variant: ${item.variance}`:''}
 }`;
 }
 
+// ── Hurtig split-prompt (system+user) — lav latency optimeret ──
+function buildPromptSplit(item){
+  const isGraded = item.grade && item.grade!=='Ungraded';
+  const isSealed = (item.portfolioName||'').toLowerCase().includes('sealed');
+  const mkt = totV(item), cost = totC(item), pl = plAbs(item), pct = plPct(item);
+  const lc = liveCache[item.id];
+  const liveStr = lc && (lc.lowestNM||lc.trendPrice) ? 'Live CM: '+fmtDKK(lc.lowestNM||lc.trendPrice) : '';
+  const langNote = currentLang==='da'?'Svar på DANSK.':currentLang==='en'?'Reply in ENGLISH.':currentLang==='ja'?'日本語で回答。':currentLang==='ko'?'한국어로 답변.':currentLang==='zh'?'请用中文回答。':currentLang==='de'?'Auf DEUTSCH antworten.':currentLang==='fr'?'Répondre en FRANÇAIS.':currentLang==='es'?'Responder en ESPAÑOL.':currentLang==='pt'?'Responder em PORTUGUÊS.':currentLang==='it'?'Rispondere in ITALIANO.':'Reply in ENGLISH.';
+  const recOpts = isGraded?'"Sælg"|"Behold graderet"':isSealed?'"Sælg"|"Behold sealed"':'"Sælg"|"Behold råt"|"Send til grading"';
+  const itemType = isGraded?('Graded '+item.grade):isSealed?'Sealed':('Raw '+(item.condition||'?'));
+  const systemPrompt = 'You are a Pokémon TCG investment analyst. '+langNote+' Reply with ONLY valid JSON — no markdown, no extra text. PSA grading: NEVER invent % probabilities — use qualitative descriptions only (NM="strong PSA 9/10 candidate", LP="PSA 8-9 likely", MP="PSA 7-8 range").';
+  const finStr = 'Cost '+(cost>0?cost.toFixed(0)+' DKK':'?')+' | Market '+(mkt>0?mkt.toFixed(0)+' DKK':'?')+' | P/L '+(cost>0?pl.toFixed(0)+' DKK ('+fmtP(pct)+')':'?')+(liveStr?' | '+liveStr:'')+' | Qty: '+item.quantity;
+  const itemStr = item.productName+(item.cardNumber?' #'+item.cardNumber:'')+' | Set: '+item.set+(item.rarity?' | '+item.rarity:'')+(item.variance?' | '+item.variance:'')+' | Type: '+itemType;
+  const jsonSchema = '{"recommendation":'+recOpts+',"overall_score":<1-10>,"dimensions":{"price_trend":<1-10>,"demand":<1-10>,"roi_potential":<1-10>},"dimension_reasoning":{"price_trend_reasoning":"<1 sentence>","demand_reasoning":"<1 sentence>","roi_reasoning":"<1 sentence>"},"reasoning":"<2 sentences>","key_factor":"<max 8 words>"}';
+  const userPrompt = 'Analyze for investment. Reply ONLY with this JSON:\n'+jsonSchema+'\n\nITEM: '+itemStr+'\nFINANCIALS: '+finStr;
+  return { systemPrompt, userPrompt };
+}
+
 async function analyseItem(item){
   if(!apiKey) return null;
-  const prompt = buildPrompt(item);
   try {
+    const { systemPrompt, userPrompt } = buildPromptSplit(item);
     const res = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
       headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'sonar',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2,
-        max_tokens: 600,
-        search_recency_filter: 'month',
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user',   content: userPrompt   },
+        ],
+        temperature: 0.1,
+        max_tokens: 400,
+        search_context_size: 'low',
         return_citations: true,
       })
     });
@@ -2459,7 +2502,7 @@ async function runSingleAnalysis(itemId){
 
   // Update button to loading state
   const btn = document.getElementById('abtn-'+itemId);
-  if(btn){ btn.disabled=true; btn.innerHTML='<span class="ai-thinking"><span></span><span></span><span></span></span> AI analyserer… (~3 sek)'; }
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="ai-thinking"><span></span><span></span><span></span></span> AI analyserer…'; }
 
   try{
     const result = await analyseItem(item);
@@ -3493,12 +3536,18 @@ function renderAICell(item){
     : (item.language && item.language.toLowerCase()!=='english' && item.language!=='') ? item.language.substring(0,2).toUpperCase()
     : null;
   const _langHtml = (_langTag && _langTag!=='EN') ? `<span class="lang-pill">${_langTag}</span>` : '';
+  // Cache-alder indikator
+  const _ts = ai.timestamp ? new Date(ai.timestamp) : null;
+  const _ageDays = _ts ? Math.floor((Date.now()-_ts.getTime())/(1000*60*60*24)) : null;
+  const _ageHtml = _ageDays!==null
+    ? `<span style="font-size:.6rem;color:var(--muted);margin-left:.15rem" title="Analyseret ${_ts.toLocaleDateString('da-DK')}">${_ageDays===0?'i dag':_ageDays===1?'1 dag':_ageDays+'d'}</span>`
+    : '';
   return `<td class="ai-cell">
     <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap">
       <button class="score-badge ${cls}" onclick="toggleDetail('${item.id}')" title="${esc(ai.key_factor||'')}">
         ${score}/10 · ${esc(rec)}${_langHtml}${expanded?' ▲':' ▼'}
       </button>
-      <button class="btn-analyse" id="abtn-${item.id}" onclick="runSingleAnalysis('${item.id}')" title="Genanalysér">↺</button>
+      <button class="btn-analyse" id="abtn-${item.id}" onclick="runSingleAnalysis('${item.id}')" title="Genanalysér (${_ageDays!==null?(_ageDays===0?'i dag':_ageDays+'d siden'):'?'})">↺${_ageHtml}</button>
     </div>
   </td>`;
 }
@@ -3750,7 +3799,7 @@ function renderTable(filtered){
         <td class="num gold">${totV(item)>0?fmtDKK(totV(item)):'—'}</td>
         <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
         ${renderAICell(item)}
-        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+        <td style="white-space:nowrap"><button class="btn-watch" id="wbtn-${item.id}" onclick="toggleWatchlist('${item.id}')" title="${watchlistData.find(w=>w.id===item.id)?'Fjern fra watchlist':'Tilføj til watchlist'}" style="${watchlistData.find(w=>w.id===item.id)?'color:var(--primary);opacity:1':''}">👁</button>&nbsp;<button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
       </tr>`+renderAIDetailRow(item,COLS);
     }).join('');
     container.innerHTML=`<table><thead><tr>
@@ -3784,7 +3833,7 @@ function renderTable(filtered){
         <td class="num gold">${totV(item)>0?fmtDKK(totV(item)):'—'}</td>
         <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
         ${renderAICell(item)}
-        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+        <td style="white-space:nowrap"><button class="btn-watch" id="wbtn-${item.id}" onclick="toggleWatchlist('${item.id}')" title="${watchlistData.find(w=>w.id===item.id)?'Fjern fra watchlist':'Tilføj til watchlist'}" style="${watchlistData.find(w=>w.id===item.id)?'color:var(--primary);opacity:1':''}">👁</button>&nbsp;<button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
       </tr>`+renderAIDetailRow(item,COLS);
     }).join('');
     container.innerHTML=`<table><thead><tr>
@@ -3814,7 +3863,7 @@ function renderTable(filtered){
         <td class="num ${plC}">${totC(item)>0?fmtDKK(pl)+'<br><span style="font-size:.65rem;font-weight:400">'+fmtP(pct)+'</span>':'—'}</td>
         <td class="muted hide-mob" style="font-size:.75rem">${item.dateAdded||'—'}</td>
         ${renderAICell(item)}
-        <td><button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
+        <td style="white-space:nowrap"><button class="btn-watch" id="wbtn-${item.id}" onclick="toggleWatchlist('${item.id}')" title="${watchlistData.find(w=>w.id===item.id)?'Fjern fra watchlist':'Tilføj til watchlist'}" style="${watchlistData.find(w=>w.id===item.id)?'color:var(--primary);opacity:1':''}">👁</button>&nbsp;<button class="btn-del" onclick="deleteItem('${item.id}')">🗑</button></td>
       </tr>`+renderAIDetailRow(item,COLS);
     }).join('');
     container.innerHTML=`<table><thead><tr>
@@ -3938,6 +3987,210 @@ function submitForm(){
   showToast('✅ Tilføjet: '+name);
 }
 function closeModal(){ document.getElementById('modalBackdrop').classList.remove('open'); }
+
+// ═══════════════════════════════════════════════════════
+// WATCHLIST
+// ═══════════════════════════════════════════════════════
+
+function toggleWatchlist(itemId){
+  const src = activeTab; // 'graded' | 'sealed' | 'raw'
+  const arr  = src==='graded'?gradedData : src==='sealed'?sealedData : rawData;
+  const item = arr.find(i=>i.id===itemId);
+  if(!item) return;
+  const existing = watchlistData.findIndex(w=>w.id===itemId);
+  if(existing>=0){
+    watchlistData.splice(existing,1);
+    showToast('👁 Fjernet fra Watchlist');
+  } else {
+    watchlistData.push({
+      id: item.id,
+      productName: item.productName,
+      set: item.set,
+      cardNumber: item.cardNumber||'',
+      rarity: item.rarity||'',
+      condition: item.condition||item.grade||'',
+      sourceTab: src,
+      targetPrice: 0,
+      addedAt: new Date().toISOString().slice(0,10),
+    });
+    showToast('👁 Tilføjet til Watchlist');
+  }
+  saveAll();
+  syncWatchlistToSupabase();
+  render(); // refresh watchlist-knap farve
+}
+
+function saveWatchTargetPrice(itemId, val){
+  const w = watchlistData.find(w=>w.id===itemId);
+  if(!w) return;
+  w.targetPrice = parseFloat(val)||0;
+  saveAll();
+  syncWatchlistToSupabase();
+  // Re-render kun target+dist kolonnen for at undgå input-blur
+  renderWatchlistDistCell(itemId);
+}
+
+function renderWatchlistDistCell(itemId){
+  const w = watchlistData.find(x=>x.id===itemId);
+  if(!w) return;
+  const lc = liveCache[itemId];
+  const livePrice = lc ? (lc.lowestNM||lc.trendPrice||0) : 0;
+  const dist = (w.targetPrice>0 && livePrice>0) ? ((livePrice-w.targetPrice)/w.targetPrice*100) : null;
+  const alarmHit = (w.targetPrice>0 && livePrice>0 && livePrice<=w.targetPrice);
+  const distCell = document.getElementById('wl-dist-'+itemId);
+  if(distCell){
+    if(alarmHit){
+      distCell.innerHTML = '<span class="wl-alarm-badge">🔔 Ramt målpris!</span>';
+    } else if(dist!==null){
+      const cls = dist<=10?'wl-dist-green':'wl-dist-red';
+      distCell.innerHTML = `<span class="${cls}">${dist>0?'+':''}${dist.toFixed(1)}%</span>`;
+    } else {
+      distCell.innerHTML = '<span style="color:var(--muted)">—</span>';
+    }
+  }
+}
+
+async function fetchWatchlistPrices(){
+  if(!watchlistData.length) return;
+  for(const w of watchlistData){
+    const arr = w.sourceTab==='graded'?gradedData:w.sourceTab==='sealed'?sealedData:rawData;
+    const item = arr.find(i=>i.id===w.id);
+    if(item) await fetchLivePrice(item);
+  }
+  renderWatchlist();
+}
+
+async function runWatchlistAnalysis(itemId){
+  const w = watchlistData.find(x=>x.id===itemId);
+  if(!w){ showToast('❌ Item ikke fundet'); return; }
+  const arr = w.sourceTab==='graded'?gradedData:w.sourceTab==='sealed'?sealedData:rawData;
+  const item = arr.find(i=>i.id===w.id);
+  if(!item){ showToast('❌ Item ikke i portefølje'); return; }
+  if(!apiKey){ showToast('❌ Tilføj Perplexity API-nøgle'); return; }
+  const btn = document.getElementById('wl-abtn-'+itemId);
+  if(btn){ btn.disabled=true; btn.innerHTML='<span class="ai-thinking"><span></span><span></span><span></span></span>'; }
+  try{
+    const result = await analyseItem(item);
+    if(result){
+      aiCache[itemId]=result; saveAll(); upsertAI(itemId,result);
+      showToast('🤖 AI-analyse klar');
+      renderWatchlist();
+      fetchLivePrice(item).then(()=>renderWatchlist());
+    }
+  } catch(e){
+    showToast('❌ AI fejl: '+e.message);
+    if(btn){ btn.disabled=false; btn.innerHTML='🤖'; }
+  }
+}
+
+function removeFromWatchlist(itemId){
+  watchlistData = watchlistData.filter(w=>w.id!==itemId);
+  saveAll();
+  syncWatchlistToSupabase();
+  renderWatchlist();
+  showToast('🗑 Fjernet fra Watchlist');
+}
+
+async function syncWatchlistToSupabase(){
+  if(!supaUser||!supa) return;
+  try{
+    if(watchlistData.length){
+      const batch = watchlistData.map(w=>({id:w.id,user_id:supaUser.id,data:w}));
+      await supa.from('watchlist_items').upsert(batch,{onConflict:'id,user_id'});
+    }
+  } catch(e){ console.warn('Watchlist sync fejl:', e); }
+}
+
+function renderWatchlist(){
+  const container = document.getElementById('watchlistPanel');
+  if(!container) return;
+
+  if(!watchlistData.length){
+    container.innerHTML = `
+      <div class="wl-empty">
+        <div style="font-size:2.5rem;margin-bottom:.75rem">👁</div>
+        <div style="font-weight:700;font-size:1rem;margin-bottom:.4rem">Watchlist er tom</div>
+        <div style="font-size:.82rem">Klik 👁 på et kort i Graded, Sealed eller Raw for at følge det</div>
+      </div>`;
+    return;
+  }
+
+  // Check for price alarms
+  const alarms = watchlistData.filter(w=>{
+    const lc = liveCache[w.id];
+    const lp = lc?(lc.lowestNM||lc.trendPrice||0):0;
+    return w.targetPrice>0 && lp>0 && lp<=w.targetPrice;
+  });
+
+  const rows = watchlistData.map(w=>{
+    const lc = liveCache[w.id];
+    const livePrice = lc?(lc.lowestNM||lc.trendPrice||0):0;
+    const livePriceStr = livePrice>0?fmtDKK(livePrice):'<span style="color:var(--muted);font-size:.75rem">Ikke hentet</span>';
+    const dist = (w.targetPrice>0 && livePrice>0) ? ((livePrice-w.targetPrice)/w.targetPrice*100) : null;
+    const alarmHit = (w.targetPrice>0 && livePrice>0 && livePrice<=w.targetPrice);
+    const distHtml = alarmHit
+      ? '<span class="wl-alarm-badge">🔔 Ramt!</span>'
+      : dist!==null
+        ? `<span class="${dist<=10?'wl-dist-green':'wl-dist-red'}">${dist>0?'+':''}${dist.toFixed(1)}%</span>`
+        : '<span style="color:var(--muted)">—</span>';
+
+    const ai = aiCache[w.id];
+    const aiHtml = ai
+      ? `<span class="score-badge score-${scoreClass(ai.overall_score)}">${ai.overall_score}</span>`
+      : `<button class="btn-live" id="wl-abtn-${w.id}" onclick="runWatchlistAnalysis('${w.id}')" style="font-size:.68rem;padding:.12rem .35rem">🤖</button>`;
+
+    const srcPill = `<span class="wl-source-pill">${w.sourceTab}</span>`;
+
+    return `<tr>
+      <td><div class="name-cell" title="${esc(w.productName)}">${esc(w.productName)} ${srcPill}</div></td>
+      <td class="hide-mob"><div class="set-cell">${esc(w.set)}</div></td>
+      <td class="hide-mob muted" style="font-size:.72rem">${esc(w.condition||'—')}</td>
+      <td class="num"><input class="wl-target-input" type="number" min="0" step="1" value="${w.targetPrice||''}" placeholder="0 DKK" onchange="saveWatchTargetPrice('${w.id}',this.value)" /></td>
+      <td class="num gold">${livePriceStr}</td>
+      <td class="num" id="wl-dist-${w.id}">${distHtml}</td>
+      <td style="text-align:center">${aiHtml}</td>
+      <td><button class="btn-del" onclick="removeFromWatchlist('${w.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+
+  const alarmBanner = alarms.length
+    ? `<div style="background:#0c7a8515;border:1px solid var(--teal);border-radius:.5rem;padding:.6rem .9rem;margin-bottom:.75rem;font-size:.82rem;color:var(--teal);font-weight:600">
+        🔔 ${alarms.length} kort har ramt eller passeret målprisen: ${alarms.map(a=>`<strong>${esc(a.productName)}</strong>`).join(', ')}
+      </div>`
+    : '';
+
+  container.innerHTML = `
+    <div class="wl-panel-header">
+      <div class="wl-panel-title">👁 Watchlist <span style="font-size:.8rem;font-weight:400;color:var(--muted);margin-left:.35rem">${watchlistData.length} poster</span></div>
+      <div style="display:flex;gap:.5rem">
+        <button class="btn-live" onclick="fetchWatchlistPrices()" style="font-size:.75rem;padding:.25rem .65rem">🔄 Hent priser</button>
+      </div>
+    </div>
+    ${alarmBanner}
+    <div class="table-wrap" style="margin:0">
+      <table><thead><tr>
+        <th>Navn</th>
+        <th class="hide-mob">Sæt</th>
+        <th class="hide-mob">Stand/Grade</th>
+        <th>Målpris (DKK)</th>
+        <th>Live pris</th>
+        <th>Afstand</th>
+        <th style="text-align:center">AI</th>
+        <th></th>
+      </tr></thead><tbody>${rows}</tbody></table>
+    </div>`;
+
+  // Check alarms and toast
+  if(alarms.length){
+    alarms.forEach(a=>{
+      const toastKey = 'wl_alarm_'+a.id+'_'+new Date().toDateString();
+      if(!sessionStorage.getItem(toastKey)){
+        showToast(`🔔 ${a.productName} har ramt målpris!`);
+        sessionStorage.setItem(toastKey,'1');
+      }
+    });
+  }
+}
 
 // ═══════════════════════════════════════════════════════
 // DELETE
