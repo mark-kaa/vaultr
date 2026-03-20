@@ -6,7 +6,7 @@ compatibility_date = "2024-01-01"
 crons = ["0 */6 * * *"]
 
 # Environment variables sættes i Cloudflare Dashboard → Workers → Settings → Variables:
-# RESEND_API_KEY = re_WCtuEHhB_1pzNe9CkixGeA8m2WTuHmoPH
+# RESEND_API_KEY = "<indsæt-ny-nøgle-fra-resend>"
 # SUPABASE_URL   = https://foophemjhkomzzzpffuq.supabase.co
 # SUPABASE_SERVICE_KEY = <din service role key fra Supabase Dashboard>
-# CM_RAPIDAPI_KEY = 3d42f08cefmshb273301c0d032a5p13263fjsn8dcea152f2cc
+# CM_RAPIDAPI_KEY = "<indsæt-rapidapi-nøgle>"
