@@ -642,6 +642,12 @@ tbody tr:hover .btn-del{opacity:1}
     <button class="btn-save-key" onclick="saveCMApiKey()" style="background:var(--teal)">Gem</button>
     <span class="key-status" id="cmKeyStatus" style="color:var(--teal)"></span>
     <a href="https://www.cardmarket-api.com" target="_blank" style="font-size:.73rem;color:var(--teal);text-decoration:underline;white-space:nowrap">DE/FR/ES/IT priser →</a>
+    <span style="color:var(--border);margin:0 .25rem">|</span>
+    <span style="color:#5b9cf6;font-weight:700;font-size:.8rem;white-space:nowrap">🔵 PSA API</span>
+    <input type="password" id="psaApiKeyInput" placeholder="PSA bearer token" autocomplete="off" style="max-width:220px;border-color:color-mix(in srgb,#5b9cf6 35%,var(--border))"/>
+    <button class="btn-save-key" onclick="savePSAApiKey()" style="background:#1a4a8a">Gem</button>
+    <span class="key-status" id="psaKeyStatus" style="color:#5b9cf6"></span>
+    <a href="https://www.psacard.com/publicapi" target="_blank" style="font-size:.73rem;color:#5b9cf6;text-decoration:underline;white-space:nowrap">PSA Public API →</a>
   </div>
 </div>
 
@@ -921,6 +927,91 @@ function saveCMApiKey(){
   localStorage.setItem('pf_cmapi_key', key);
   document.getElementById('cmKeyStatus').textContent = '✓ Aktiv';
   showToast('✅ Cardmarket API-nøgle gemt — DE/FR/ES/IT priser aktiveret');
+}
+function savePSAApiKey(){
+  const key = document.getElementById('psaApiKeyInput').value.trim();
+  if(!key){ showToast('Ingen PSA token indtastet'); return; }
+  localStorage.setItem('pf_psa_key', key);
+  document.getElementById('psaKeyStatus').textContent = '✓ Aktiv';
+  showToast('✅ PSA API token gemt — cert-opslag aktiveret');
+  // Re-render to update POP panels
+  render();
+}
+function initPSAApiKey(){
+  const k = localStorage.getItem('pf_psa_key');
+  if(k){
+    const inp = document.getElementById('psaApiKeyInput'); if(inp) inp.value = k;
+    const ks = document.getElementById('psaKeyStatus'); if(ks) ks.textContent = '✓ Aktiv';
+  }
+}
+// Fetch PSA cert data — returns parsed object or null
+async function fetchPSACert(certNumber){
+  const token = localStorage.getItem('pf_psa_key');
+  if(!token || !certNumber) return null;
+  const clean = String(certNumber).replace(/\D/g,'').padStart(8,'0');
+  try{
+    const r = await fetch(`https://api.psacard.com/publicapi/cert/GetByCertNumber/${clean}`,{
+      headers:{ 'Authorization': `bearer ${token}` }
+    });
+    if(!r.ok) return null;
+    const json = await r.json();
+    return json.PSACert || null;
+  } catch(e){ return null; }
+}
+// Trigger PSA lookup from POP panel button
+async function lookupPSACert(itemId, certNumber){
+  if(!certNumber){ showToast('Indtast et cert-nummer'); return; }
+  const btn = document.getElementById('psa-lookup-btn-'+itemId);
+  const res = document.getElementById('psa-lookup-res-'+itemId);
+  if(btn) btn.disabled = true;
+  if(res) res.innerHTML = '<span style="color:var(--muted);font-size:.75rem">Henter PSA data…</span>';
+  const cert = await fetchPSACert(certNumber);
+  if(btn) btn.disabled = false;
+  if(!cert){
+    if(res) res.innerHTML = '<div style="color:var(--red);font-size:.75rem">❌ Cert-nummer ikke fundet eller PSA token mangler.</div>';
+    return;
+  }
+  // Save cert number on item
+  const all = [...gradedData,...sealedData,...rawData];
+  const item = all.find(i=>i.id===itemId);
+  if(item){ item.psaCertNumber = certNumber; saveAll(); }
+  // Render result
+  const popHtml = renderPSACertResult(cert);
+  if(res) res.innerHTML = popHtml;
+}
+function renderPSACertResult(cert){
+  if(!cert) return '';
+  const grades = [10,9,8,7,6,5,4,3,2,1];
+  const ownGrade = cert.CardGrade || '';
+  const pop = cert.TotalPopulation || 0;
+  const popHigher = cert.PopulationHigher || 0;
+  const gradeLabel = cert.GradeDescription || ownGrade;
+  // Build pop summary
+  return `
+    <div style="margin-top:.6rem;padding:.6rem;background:var(--surface2);border-radius:.5rem;border:1px solid var(--border)">
+      <div style="display:flex;gap:.5rem;align-items:center;flex-wrap:wrap;margin-bottom:.5rem">
+        <span style="font-weight:700;font-size:.8rem;color:#5b9cf6">📋 PSA Cert #${esc(String(cert.CertNumber))}</span>
+        <span style="font-size:.72rem;color:var(--muted)">${esc(cert.Year||'')} ${esc(cert.Brand||'')} · ${esc(cert.Subject||'')}</span>
+      </div>
+      <div style="display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.5rem">
+        <div style="text-align:center">
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Grade</div>
+          <div style="font-size:1.1rem;font-weight:800;color:#5b9cf6">${esc(gradeLabel)}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Pop denne grade</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--text)">${pop}</div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Pop højere</div>
+          <div style="font-size:1.1rem;font-weight:800;color:var(--${popHigher===0?'teal':'red'})">${popHigher}</div>
+        </div>
+        ${cert.TotalPopulationWithQualifier>0?`<div style="text-align:center"><div style="font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Med qualifier</div><div style="font-size:1.1rem;font-weight:800;color:var(--orange)">${cert.TotalPopulationWithQualifier}</div></div>`:''}
+      </div>
+      <div style="font-size:.68rem;color:var(--faint);margin-top:.25rem">
+        ${cert.Variety?`Variant: ${esc(cert.Variety)} · `:''}${cert.Category?esc(cert.Category):''}
+      </div>
+    </div>`;
 }
 function initCMApiKey(){
   const k = localStorage.getItem('pf_cmapi_key');
@@ -3439,31 +3530,55 @@ function renderGradedGrid(item) {
 }
 
 function renderPOPPanel(item) {
-  const provider = item.gradingProvider || '';
-  const score = item.gradeScore || '';
-  const label = item.gradeLabel || item.grade || '';
+  const provider = (item.gradingProvider || '').toUpperCase();
   const grade = item.grade || '';
+  const score = item.gradeScore || '';
+  const isPSA = provider === 'PSA';
+  const hasPSAKey = !!localStorage.getItem('pf_psa_key');
+  const savedCert = item.psaCertNumber || '';
 
   const gradeBadgeHtml = grade && grade !== 'Ungraded'
     ? `<div class="pop-grade-badge">${esc(grade)}</div>`
     : '<div class="pop-grade-badge" style="color:var(--faint)">-</div>';
 
-  const metaHtml = (provider || score || label) ? `
-    <div class="pop-meta">
-      ${provider ? `<div class="pop-provider">${esc(provider)}</div>` : ''}
-      ${score    ? `<div class="pop-label">Score: <strong>${esc(String(score))}</strong></div>` : ''}
-      ${label && label !== grade ? `<div style="font-size:.72rem;color:var(--muted)">${esc(label)}</div>` : ''}
-    </div>` : '';
+  // PSA lookup widget — vises for PSA-graderede kort eller hvis PSA-nøgle er aktiv
+  const psaWidgetHtml = (isPSA || hasPSAKey) ? `
+    <div style="margin-top:.6rem">
+      <div style="font-size:.72rem;font-weight:700;color:#5b9cf6;margin-bottom:.35rem">🔵 PSA Cert-opslag</div>
+      <div style="display:flex;gap:.4rem;align-items:center;flex-wrap:wrap">
+        <input type="text" id="psa-cert-input-${item.id}"
+          placeholder="Cert-nummer (fx 12345678)"
+          value="${esc(savedCert)}"
+          style="flex:1;min-width:140px;max-width:200px;padding:.3rem .5rem;border-radius:.4rem;border:1px solid color-mix(in srgb,#5b9cf6 40%,var(--border));background:var(--surface2);color:var(--text);font-size:.75rem"
+        />
+        <button id="psa-lookup-btn-${item.id}" class="btn-save-key" style="background:#1a4a8a;font-size:.72rem;padding:.3rem .7rem;white-space:nowrap"
+          onclick="lookupPSACert('${item.id}', document.getElementById('psa-cert-input-${item.id}').value.trim())">
+          Hent PSA data
+        </button>
+      </div>
+      <div id="psa-lookup-res-${item.id}" style="margin-top:.4rem"></div>
+    </div>` : `
+    <div class="pop-note" style="margin-top:.5rem">
+      <strong>PSA Population data:</strong> Tilføj din PSA API token i banneret ovenfor for at aktivere cert-opslag.
+      <br><a href="https://www.psacard.com/publicapi" target="_blank" style="color:#5b9cf6">Hent PSA token →</a>
+    </div>`;
 
-  const psaPopUrl = 'https://www.psacard.com/pop';
+  // Non-PSA grading provider note
+  const otherGraderNote = (!isPSA && provider && provider !== '') ? `
+    <div style="font-size:.7rem;color:var(--muted);margin-top:.4rem">
+      ${esc(provider)}-graderede kort: PSA pop-data er ikke relevant. Tjek <a href="https://www.beckett.com" target="_blank" style="color:var(--blue)">Beckett</a> eller din grader direkte.
+    </div>` : '';
 
   return `
     <div class="pop-panel">
-      <div class="pop-info-row">${gradeBadgeHtml}${metaHtml}</div>
-      <div class="pop-note">
-        <strong>Population data</strong> kræver PSA API integration og er ikke tilgængelig i denne version.<br>
-        Se live pop-rapport direkte på <a href="${psaPopUrl}" target="_blank" rel="noopener">PSA Card Pop Report</a>.
+      <div class="pop-info-row">${gradeBadgeHtml}
+        <div class="pop-meta">
+          ${provider ? `<div class="pop-provider">${esc(provider)}</div>` : ''}
+          ${score ? `<div class="pop-label">Score: <strong>${esc(String(score))}</strong></div>` : ''}
+        </div>
       </div>
+      ${psaWidgetHtml}
+      ${otherGraderNote}
     </div>`;
 }
 
@@ -4092,6 +4207,7 @@ function applyLang(){
 // ═══════════════════════════════════════════════════════
 initApiKey();
 initCMApiKey();
+initPSAApiKey();
 // Restore language
 const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
 applyLang();
