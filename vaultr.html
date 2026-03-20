@@ -3575,6 +3575,20 @@ function renderGradedGrid(item) {
   if (!basePrice || basePrice <= 0) {
     return '<div style="font-size:.75rem;color:var(--muted)">Ingen markedspris tilgængelig — kan ikke estimere grade-priser.</div>';
   }
+
+  // Hvis kortet ALLEREDE er graderet — graderingspriserne giver ikke mening
+  const isAlreadyGraded = item.grade && item.grade !== 'Ungraded' && item.gradingProvider;
+  if (isAlreadyGraded) {
+    const lc = liveCache[item.id];
+    const cmPrice = lc ? (lc.lowestNM || lc.trendPrice || 0) : 0;
+    const cmStr = cmPrice > 0 ? fmtDKK(cmPrice) : '—';
+    return `<div style="padding:.5rem 0">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Aktuel markedsværdi</div>
+      <div style="font-size:.85rem;color:var(--text)">Dette kort er allerede graderet (${esc(item.grade)}). Graderingsestimater vises kun for <strong>råkort</strong> der endnu ikke er sendt til grading.</div>
+      ${cmPrice > 0 ? `<div style="margin-top:.6rem;font-size:.82rem;color:var(--muted)">Live Cardmarket NM-pris: <span style="color:var(--gold);font-weight:700">${cmStr}</span></div>` : ''}
+    </div>`;
+  }
+
   const condKey = (item.condition || 'mint').toLowerCase().trim();
   const mults = PSA_MULTIPLIERS[condKey] || PSA_MULTIPLIERS['mint'];
 
@@ -3608,9 +3622,9 @@ function renderGradedGrid(item) {
     : '';
 
   return `
-    <div style="margin-bottom:.4rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Estimerede graderingspriser</div>
+    <div style="margin-bottom:.4rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Forventet salgspris efter grading (estimat)</div>
     <div class="graded-grid">${cells}</div>
-    <div style="font-size:.62rem;color:var(--faint);margin-top:.5rem">Baseret på markedspris × historiske PSA-multiplikatorer (${esc(item.condition || 'Mint')} stand)</div>
+    <div style="font-size:.62rem;color:var(--faint);margin-top:.5rem">Hvad du kan forvente at sælge for efter grading · Baseret på markedspris × historiske PSA-multiplikatorer (${esc(item.condition || 'Mint')} stand)</div>
     ${note}`;
 }
 
