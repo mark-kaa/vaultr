@@ -283,7 +283,7 @@ tbody tr:hover .btn-watch{opacity:.7}
 .score-dim-val.mid{color:var(--orange)}
 .score-dim-val.low{color:var(--red)}
 /* Dim expand panel */
-.dim-expand{display:none;position:absolute;top:calc(100% + 6px);left:50%;transform:translateX(-50%);min-width:240px;max-width:320px;background:var(--surface);border:1.5px solid var(--primary);border-radius:var(--radius);padding:.75rem .9rem;z-index:20;box-shadow:var(--shadow-lg);font-size:.78rem;line-height:1.6;color:var(--text);text-align:left;white-space:normal}
+.dim-expand{display:none;position:fixed;top:calc(100% + 6px);left:50%;transform:translateX(-50%);min-width:240px;max-width:320px;background:var(--surface);border:1.5px solid var(--primary);border-radius:var(--radius);padding:.75rem .9rem;z-index:9999;box-shadow:var(--shadow-lg);font-size:.78rem;line-height:1.6;color:var(--text);text-align:left;white-space:normal}
 .dim-expand.open{display:block}
 .dim-expand-title{font-size:.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.35rem}
 .dim-expand::before{content:'';position:absolute;top:-7px;left:50%;transform:translateX(-50%);width:12px;height:12px;background:var(--surface);border-left:1.5px solid var(--primary);border-top:1.5px solid var(--primary);transform:translateX(-50%) rotate(45deg)}
@@ -751,6 +751,7 @@ supa.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('authOverlay').classList.add('hidden');
     await loadFromSupabase();
     await loadPriceHistoryFromSupabase();
+    await loadWatchlistFromSupabase();
     render();
   } else {
     document.getElementById('userChipWrap').style.display = 'none';
@@ -3448,7 +3449,19 @@ function render(){
 
   let filtered = data.filter(item=>{
     const q=searchQ;
-    const ms = !q || item.productName.toLowerCase().includes(q) || item.set.toLowerCase().includes(q) || (item.grade||'').toLowerCase().includes(q) || (item.category||'').toLowerCase().includes(q) || (item.rarity||'').toLowerCase().includes(q);
+    // Smart søgning: "Charizard 25" → navn+nummer, "Charizard Base Set" → navn+sæt
+    const qParts = q ? q.split(/\s+/).filter(Boolean) : [];
+    const ms = !q || (() => {
+      const name = item.productName.toLowerCase();
+      const set  = item.set.toLowerCase();
+      const num  = (item.cardNumber||'').toLowerCase();
+      const grade = (item.grade||'').toLowerCase();
+      const cat  = (item.category||'').toLowerCase();
+      // Fuld streng match
+      if(name.includes(q)||set.includes(q)||num.includes(q)||grade.includes(q)||cat.includes(q)) return true;
+      // Multi-token: alle ord skal matche ét af felterne
+      return qParts.every(part => name.includes(part)||set.includes(part)||num.includes(part)||grade.includes(part)||cat.includes(part));
+    })();
     const mc = filterCat==='Alle' || item.category===filterCat;
     return ms && mc;
   });
@@ -3752,8 +3765,8 @@ function renderPriceChartPanel(item){
       <span style="font-size:.8rem;font-weight:700;color:${pctColor};margin-left:auto">${pctStr}</span>
     </div>
     <div class="ph-stats-row">${stats}</div>
-    <div style="position:relative;height:160px;margin:.5rem 0">
-      <canvas id="${canvasId}" style="width:100%;height:160px"></canvas>
+    <div id="chart-wrap-${canvasId}" style="position:relative;width:100%;height:160px;margin:.5rem 0">
+      <canvas id="${canvasId}" style="display:block;width:100%;height:160px"></canvas>
     </div>
     <div style="font-size:.62rem;color:var(--faint);margin-top:.25rem">${dataNote}</div>
   </div>`;
@@ -3765,6 +3778,9 @@ function initPriceChart(itemId){
   const canvas = document.getElementById(canvasId);
   if(!canvas || canvas.dataset.chartReady) return;
   canvas.dataset.chartReady = '1';
+  // Sæt explicit px-størrelse så Chart.js ikke får 0x0
+  const wrap = canvas.parentElement;
+  if(wrap){ canvas.width = wrap.offsetWidth || 300; canvas.height = 160; }
 
   const snaps = priceHistory[itemId] || [];
   const lc = liveCache[itemId];
@@ -4295,6 +4311,23 @@ async function syncWatchlistToSupabase(){
       await supa.from('watchlist_items').upsert(batch,{onConflict:'id,user_id'});
     }
   } catch(e){ console.warn('Watchlist sync fejl:', e); }
+}
+
+async function loadWatchlistFromSupabase(){
+  if(!supaUser||!supa) return;
+  try{
+    const { data, error } = await supa.from('watchlist_items').select('id,data').eq('user_id', supaUser.id);
+    if(error){ console.warn('Watchlist load fejl:', error.message); return; }
+    if(data && data.length){
+      // Flet Supabase-data med localStorage (Supabase vinder)
+      data.forEach(row => {
+        const existing = watchlistData.findIndex(w => w.id === row.id);
+        if(existing >= 0) watchlistData[existing] = row.data;
+        else watchlistData.push(row.data);
+      });
+      saveAll();
+    }
+  } catch(e){ console.warn('Watchlist load fejl:', e); }
 }
 
 function renderWatchlist(){
