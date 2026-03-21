@@ -676,6 +676,12 @@ tbody tr:hover .btn-watch{opacity:.7}
     <button class="btn-save-key" onclick="savePSAApiKey()" style="background:#1a4a8a">Gem</button>
     <span class="key-status" id="psaKeyStatus" style="color:#5b9cf6"></span>
     <a href="https://www.psacard.com/publicapi" target="_blank" style="font-size:.73rem;color:#5b9cf6;text-decoration:underline;white-space:nowrap">PSA Public API →</a>
+    <span style="color:var(--border);margin:0 .25rem">|</span>
+    <span style="color:#f0b429;font-weight:700;font-size:.8rem;white-space:nowrap">🟡 eBay API</span>
+    <input type="password" id="ebayIdInput" placeholder="App ID (Client ID)" autocomplete="off" style="max-width:200px;border-color:color-mix(in srgb,#f0b429 35%,var(--border))"/>
+    <input type="password" id="ebaySecretInput" placeholder="Cert ID (Client Secret)" autocomplete="off" style="max-width:200px;border-color:color-mix(in srgb,#f0b429 35%,var(--border))"/>
+    <button class="btn-save-key" onclick="saveEbayApiKey()" style="background:#b8860b">Gem</button>
+    <span class="key-status" id="ebayKeyStatus" style="color:#f0b429"></span>
   </div>
 </div>
 
@@ -972,6 +978,27 @@ function savePSAApiKey(){
   // Re-render to update POP panels
   render();
 }
+function saveEbayApiKey(){
+  const id     = document.getElementById('ebayIdInput').value.trim();
+  const secret = document.getElementById('ebaySecretInput').value.trim();
+  if(!id || !secret){ showToast('❌ Udfyld begge eBay felter'); return; }
+  localStorage.setItem('pf_ebay_id', id);
+  localStorage.setItem('pf_ebay_secret', secret);
+  ebayToken = null; ebayTokenExpiry = 0; // Reset token cache
+  const st = document.getElementById('ebayKeyStatus');
+  if(st){ st.textContent = '✓ Aktiv'; st.classList.add('ok'); }
+  showToast('✅ eBay API nøgler gemt — live eBay-priser aktiveret');
+}
+
+function initEbayApiKey(){
+  const id = localStorage.getItem('pf_ebay_id');
+  const secret = localStorage.getItem('pf_ebay_secret');
+  if(id){ const el = document.getElementById('ebayIdInput'); if(el) el.value = id; }
+  if(secret){ const el = document.getElementById('ebaySecretInput'); if(el) el.value = secret; }
+  const st = document.getElementById('ebayKeyStatus');
+  if(st && id && secret){ st.textContent = '✓ Aktiv'; st.classList.add('ok'); }
+}
+
 function initPSAApiKey(){
   const k = localStorage.getItem('pf_psa_key');
   if(k){
@@ -4861,6 +4888,7 @@ function applyLang(){
 initApiKey();
 initCMApiKey();
 initPSAApiKey();
+initEbayApiKey();
 // Restore language
 const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
 applyLang();
