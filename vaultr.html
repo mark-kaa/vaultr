@@ -640,14 +640,14 @@ tbody tr:hover .btn-watch{opacity:.7}
       <option value="it">🇮🇹 IT</option>
     </select>
     <div id="userChipWrap" style="display:none;position:relative">
-      <button class="user-chip" id="userChipBtn" onclick="toggleUserMenu()" style="cursor:pointer;border:none;background:none;padding:0">
+      <div class="user-chip" id="userChipBtn" onclick="toggleUserMenu()" role="button" tabindex="0" style="cursor:pointer;-webkit-tap-highlight-color:rgba(0,0,0,0)">
         <div class="user-dot"></div>
         <span id="userEmail" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
         <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-      </button>
-      <div id="userMenuDrop" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.35rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:180px">
-        <div style="padding:.4rem .65rem .5rem;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:.3rem" id="userMenuEmail"></div>
-        <button onclick="doLogout()" style="width:100%;text-align:left;padding:.5rem .65rem;border-radius:.35rem;background:none;border:none;color:#f87171;font-size:.85rem;cursor:pointer;font-weight:600;-webkit-tap-highlight-color:transparent">🚪 Log ud</button>
+      </div>
+      <div id="userMenuDrop" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1.5px solid var(--border);border-radius:.6rem;padding:.4rem;z-index:9999;box-shadow:0 12px 32px rgba(0,0,0,.6);min-width:200px">
+        <div style="padding:.45rem .7rem .55rem;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:.35rem" id="userMenuEmail"></div>
+        <div onclick="doLogout()" role="button" tabindex="0" style="padding:.55rem .7rem;border-radius:.4rem;color:#f87171;font-size:.88rem;cursor:pointer;font-weight:600;-webkit-tap-highlight-color:rgba(0,0,0,0);user-select:none" ontouchstart="this.style.background='var(--surface2)'" ontouchend="this.style.background='';doLogout()">🚪 Log ud</div>
       </div>
     </div>
     <div id="syncStatus" class="sync-indicator" style="display:none">
