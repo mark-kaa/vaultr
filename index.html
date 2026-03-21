@@ -250,6 +250,13 @@ tbody tr:hover .btn-watch{opacity:.7}
 .sparkline-points{display:flex;align-items:flex-end;gap:3px;height:52px;width:100%}
 .sparkline-bar{flex:1;border-radius:2px 2px 0 0;min-height:3px;transition:opacity .15s}
 .sparkline-bar:hover{opacity:.75}
+.price-chart-panel{padding:.4rem 0}
+.price-chart-header{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;font-size:.8rem}
+.ph-stats-row{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem}
+.ph-stat{background:var(--surface2);border-radius:.3rem;padding:.2rem .5rem;font-size:.72rem}
+.ph-stat-lbl{color:var(--muted);margin-right:.25rem}
+.ph-stat-val{font-weight:700;color:var(--text)}
+.ph-stat-val.teal{color:var(--teal)}
 /* ── Price by Condition ── */
 .pbc-panel{margin-top:.75rem;padding:.6rem .75rem;background:var(--surface);border:1px solid var(--border);border-radius:.5rem}
 .pbc-title{font-size:.7rem;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:.5rem}
@@ -3564,6 +3571,8 @@ function switchDetailTab(itemId, tab) {
   document.querySelectorAll('.detail-tab[data-item="'+itemId+'"]').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
   });
+  // Initialiser Chart.js graf når GRAF-tab åbnes
+  if(tab === 'graf') setTimeout(() => initPriceChart(itemId), 50);
   // Show/hide content panels
   document.querySelectorAll('.detail-tab-content[data-item="'+itemId+'"]').forEach(pane => {
     pane.classList.toggle('visible', pane.dataset.tab === tab);
@@ -3681,6 +3690,172 @@ function renderPOPPanel(item) {
     </div>`;
 }
 
+// ════════════════════════════════════════════════════════
+// PRISHISTORIK GRAF — Chart.js interaktiv graf per kort
+// ════════════════════════════════════════════════════════
+function renderPriceChartPanel(item){
+  const snaps = priceHistory[item.id] || [];
+  const lc = liveCache[item.id];
+  const cm = lc?.tcgdex?.cm;
+  const canvasId = 'price-chart-'+item.id;
+
+  // Byg datapunkter: syntetiske CM-averages + rigtige snapshots
+  let points = [];
+  const now = Date.now();
+  if(cm){
+    if(cm.avg30) points.push({ price: cm.avg30, ts: now - 30*24*60*60*1000, label: '30d avg', synthetic: true });
+    if(cm.avg7)  points.push({ price: cm.avg7,  ts: now - 7*24*60*60*1000,  label: '7d avg',  synthetic: true });
+    if(cm.avg1)  points.push({ price: cm.avg1,  ts: now - 1*24*60*60*1000,  label: '1d avg',  synthetic: true });
+    if(cm.trendPrice) points.push({ price: cm.trendPrice, ts: now, label: 'Trend', synthetic: true });
+  }
+  // Tilføj rigtige snapshots (overskriv syntetiske)
+  snaps.forEach(s => points.push({ price: s.price, ts: s.ts, synthetic: false }));
+  points.sort((a,b) => a.ts-b.ts);
+  // Dedupliker tætte punkter
+  const deduped = [];
+  points.forEach(p => {
+    const last = deduped[deduped.length-1];
+    if(!last || Math.abs(p.ts-last.ts) > 2*60*60*1000) deduped.push(p);
+  });
+  points = deduped;
+
+  const hasRealData = snaps.length >= 2;
+  const noDataMsg = !cm && !snaps.length
+    ? '<div style="color:var(--muted);font-size:.82rem;padding:.75rem 0">Hent live priser for at se grafdata</div>'
+    : '';
+
+  if(noDataMsg) return `<div style="padding:.5rem 0">${noDataMsg}</div>`;
+
+  // Statistik
+  const prices = points.map(p=>p.price);
+  const minP = Math.min(...prices), maxP = Math.max(...prices);
+  const first = prices[0], last2 = prices[prices.length-1];
+  const pct = first > 0 ? ((last2-first)/first*100) : 0;
+  const pctStr = (pct>=0?'+':'')+pct.toFixed(1)+'%';
+  const pctColor = pct >= 0 ? 'var(--green)' : 'var(--red)';
+
+  // Nøgletal
+  const stats = [
+    cm?.trendPrice  ? `<div class="ph-stat"><span class="ph-stat-lbl">Trend</span><span class="ph-stat-val teal">€${Number(cm.trendPrice).toFixed(2)}</span></div>` : '',
+    cm?.avg30       ? `<div class="ph-stat"><span class="ph-stat-lbl">30d avg</span><span class="ph-stat-val">€${Number(cm.avg30).toFixed(2)}</span></div>` : '',
+    cm?.avg7        ? `<div class="ph-stat"><span class="ph-stat-lbl">7d avg</span><span class="ph-stat-val">€${Number(cm.avg7).toFixed(2)}</span></div>` : '',
+    cm?.lowPrice    ? `<div class="ph-stat"><span class="ph-stat-lbl">Laveste</span><span class="ph-stat-val">€${Number(cm.lowPrice).toFixed(2)}</span></div>` : '',
+  ].filter(Boolean).join('');
+
+  const dataNote = hasRealData
+    ? `${snaps.length} rigtige snapshots`
+    : 'Syntetisk fra CM-averages — hent live priser dagligt for rigtig historik';
+
+  return `<div class="price-chart-panel">
+    <div class="price-chart-header">
+      <span style="font-size:.8rem;font-weight:700">📈 Prishistorik</span>
+      <span style="font-size:.8rem;font-weight:700;color:${pctColor};margin-left:auto">${pctStr}</span>
+    </div>
+    <div class="ph-stats-row">${stats}</div>
+    <div style="position:relative;height:160px;margin:.5rem 0">
+      <canvas id="${canvasId}" style="width:100%;height:160px"></canvas>
+    </div>
+    <div style="font-size:.62rem;color:var(--faint);margin-top:.25rem">${dataNote}</div>
+  </div>`;
+}
+
+// Initialiserer Chart.js graf når GRAF-tab åbnes
+function initPriceChart(itemId){
+  const canvasId = 'price-chart-'+itemId;
+  const canvas = document.getElementById(canvasId);
+  if(!canvas || canvas.dataset.chartReady) return;
+  canvas.dataset.chartReady = '1';
+
+  const snaps = priceHistory[itemId] || [];
+  const lc = liveCache[itemId];
+  const cm = lc?.tcgdex?.cm;
+  const now = Date.now();
+
+  let points = [];
+  if(cm){
+    if(cm.avg30) points.push({ price: cm.avg30, ts: now - 30*24*60*60*1000, synthetic: true });
+    if(cm.avg7)  points.push({ price: cm.avg7,  ts: now - 7*24*60*60*1000,  synthetic: true });
+    if(cm.avg1)  points.push({ price: cm.avg1,  ts: now - 1*24*60*60*1000,  synthetic: true });
+    if(cm.trendPrice) points.push({ price: cm.trendPrice, ts: now, synthetic: true });
+  }
+  snaps.forEach(s => points.push({ price: s.price, ts: s.ts, synthetic: false }));
+  points.sort((a,b) => a.ts-b.ts);
+
+  const deduped = [];
+  points.forEach(p => {
+    const last = deduped[deduped.length-1];
+    if(!last || Math.abs(p.ts-last.ts) > 2*60*60*1000) deduped.push(p);
+  });
+
+  if(deduped.length < 2){ canvas.style.display='none'; return; }
+
+  const labels = deduped.map(p => new Date(p.ts).toLocaleDateString('da-DK',{day:'numeric',month:'short'}));
+  const data   = deduped.map(p => parseFloat(p.price.toFixed(2)));
+  const first  = data[0], last2 = data[data.length-1];
+  const trendUp = last2 >= first;
+  const lineCol = trendUp ? '#6daa45' : '#f87171';
+  const fillCol = trendUp ? 'rgba(109,170,69,0.12)' : 'rgba(248,113,113,0.12)';
+
+  // Punkt-farver: syntetisk = dashed/rund, rigtig = solid
+  const pointBg = deduped.map(p => p.synthetic ? 'transparent' : lineCol);
+  const pointBorder = deduped.map(p => p.synthetic ? lineCol : lineCol);
+  const pointR = deduped.map(p => p.synthetic ? 2 : 4);
+
+  if(window.Chart){
+    new window.Chart(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [{
+          data,
+          borderColor: lineCol,
+          backgroundColor: fillCol,
+          borderWidth: 2,
+          fill: true,
+          tension: 0.35,
+          pointBackgroundColor: pointBg,
+          pointBorderColor: pointBorder,
+          pointRadius: pointR,
+          pointHoverRadius: 6,
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        interaction: { mode: 'index', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#1a1a1a',
+            borderColor: '#333',
+            borderWidth: 1,
+            titleColor: '#aaa',
+            bodyColor: '#e8e8e8',
+            callbacks: {
+              label: ctx => ' €' + ctx.parsed.y.toFixed(2),
+            }
+          }
+        },
+        scales: {
+          x: {
+            grid: { color: '#ffffff08' },
+            ticks: { color: '#666', font: { size: 10 }, maxTicksLimit: 6 }
+          },
+          y: {
+            position: 'right',
+            grid: { color: '#ffffff08' },
+            ticks: {
+              color: '#666',
+              font: { size: 10 },
+              callback: v => '€'+v.toFixed(2)
+            }
+          }
+        }
+      }
+    });
+  }
+}
+
 function renderAIDetailRow(item, colSpan){
   const ai=aiCache[item.id];
   if(!ai||!expandedRows.has(item.id)) return '';
@@ -3740,15 +3915,18 @@ function renderAIDetailRow(item, colSpan){
   // POP tab content
   const popTabContent = renderPOPPanel(item);
 
+  const grafTabContent = renderPriceChartPanel(item);
   const tabsHtml = `
     <div class="detail-tabs">
       ${tabBtn('raw', 'RAW')}
       ${tabBtn('graded', 'GRADED')}
       ${tabBtn('pop', 'POP')}
+      ${tabBtn('graf', '📈 GRAF')}
     </div>
     <div class="detail-tab-content${defaultTab==='raw'?' visible':''}" data-item="${item.id}" data-tab="raw">${rawTabContent}</div>
     <div class="detail-tab-content${defaultTab==='graded'?' visible':''}" data-item="${item.id}" data-tab="graded">${gradedTabContent}</div>
-    <div class="detail-tab-content${defaultTab==='pop'?' visible':''}" data-item="${item.id}" data-tab="pop">${popTabContent}</div>`;
+    <div class="detail-tab-content${defaultTab==='pop'?' visible':''}" data-item="${item.id}" data-tab="pop">${popTabContent}</div>
+    <div class="detail-tab-content${defaultTab==='graf'?' visible':''}" data-item="${item.id}" data-tab="graf">${grafTabContent}</div>`;
 
   return `<tr class="ai-detail-row"><td colspan="${colSpan}">
     <div class="ai-detail-inner ${cardImg ? 'has-card-img' : ''}">
