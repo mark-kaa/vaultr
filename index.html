@@ -489,6 +489,9 @@ tbody tr:hover .btn-watch{opacity:.7}
 /* Body */
 .module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0}
 .module-body.collapsed{display:none}
+.module-body.collapsed ~ .module-header .module-toggle svg,
+.dash-module.collapsed .module-toggle svg { transform: rotate(180deg); }
+.module-toggle svg { transition: transform .2s ease; }
 /* Resize håndtag — hjørne (nw-resize = diagonal begge retninger) */
 .module-resize{
   position:absolute;bottom:0;right:0;
@@ -629,7 +632,7 @@ tbody tr:hover .btn-watch{opacity:.7}
       </button>
     </div>
     <div class="spacer"></div>
-    <button class="btn-trade" onclick="openTradeAnalyzer()" title="Trade Analyzer">
+    <button class="btn-trade" onclick="openTradeAnalyzer()" title="Trade Analyzer — sammenlign to kort" style="border-color:color-mix(in srgb,var(--teal) 40%,var(--border));color:var(--teal)">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 16V4m0 0L3 8m4-4l4 4"/><path d="M17 8v12m0 0l4-4m-4 4l-4-4"/></svg>
       <span class="lbl">Trade</span>
     </button>
@@ -672,6 +675,7 @@ tbody tr:hover .btn-watch{opacity:.7}
     <button class="btn-icon" onclick="toggleTheme()" title="Skift tema">
       <svg id="themeIcon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
     </button>
+    <button class="btn-icon" onclick="openSupport()" title="Support &amp; Hjælp" style="font-size:.85rem">?</button>
   </div>
 </header>
 
@@ -1530,6 +1534,50 @@ Brug disse live data til at understøtte din prisanalyse og pristrend-score.`;
 }
 
 // ── Dashboard: render live-priser summary liste ──
+function renderDashPriceHistory(){
+  const all = [...gradedData,...sealedData,...rawData];
+  // Find items med mindst 2 prishistorik punkter
+  const withHistory = all
+    .filter(i => (priceHistory[i.id]||[]).length >= 2)
+    .map(i => {
+      const snaps = priceHistory[i.id];
+      const first = snaps[0].price, last = snaps[snaps.length-1].price;
+      const pct = first > 0 ? ((last-first)/first*100) : 0;
+      return { item: i, snaps, pct, last };
+    })
+    .sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct))
+    .slice(0, 8);
+
+  if(!withHistory.length){
+    return `<div style="font-size:.8rem;color:var(--muted);padding:.3rem 0">
+      Prishistorik akkumuleres automatisk når du henter live priser. Kom tilbage om et par dage for at se prisudvikling.
+    </div>`;
+  }
+
+  const rows = withHistory.map(({item,snaps,pct,last}) => {
+    const color = pct >= 5 ? 'var(--green)' : pct <= -5 ? 'var(--red)' : 'var(--muted)';
+    const arrow = pct > 0 ? '↑' : pct < 0 ? '↓' : '→';
+    const sparkW = 80, sparkH = 28;
+    const prices = snaps.map(s => s.price);
+    const minP = Math.min(...prices), maxP = Math.max(...prices);
+    const range = maxP - minP || 1;
+    const pts = prices.map((p,i) => {
+      const x = (i/(prices.length-1))*(sparkW-4)+2;
+      const y = sparkH - 2 - ((p-minP)/range)*(sparkH-4);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:600">${esc(item.productName.substring(0,28))}</div>
+      <svg viewBox="0 0 ${sparkW} ${sparkH}" width="${sparkW}" height="${sparkH}" style="flex-shrink:0"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/></svg>
+      <div style="font-size:.78rem;font-weight:700;color:${color};white-space:nowrap;min-width:45px;text-align:right">${arrow} ${(pct>=0?'+':'')}${pct.toFixed(1)}%</div>
+      <div style="font-size:.72rem;color:var(--gold);white-space:nowrap">€${last.toFixed(2)}</div>
+    </div>`;
+  }).join('');
+
+  return `<div>${rows}</div>
+  <div style="font-size:.62rem;color:var(--faint);margin-top:.4rem">${withHistory.length} kort med prishistorik · Baseret på ${Object.values(priceHistory).flat().length} snapshots</div>`;
+}
+
 function renderLivePricesSummary(){
   const allItems = [...gradedData, ...sealedData, ...rawData];
   const withPrices = allItems.filter(i => liveCache[i.id]?.tcgdex?.cm);
@@ -1664,6 +1712,27 @@ function renderMarketMovers(){
 
 
 // ── FEATURE A: Prishistorik sparkline (avg1/avg7/avg30/low/trend) ──
+function renderEbayTopListings(){
+  // Vis top eBay listings på tværs af alle items med eBay data
+  const all = [...gradedData, ...sealedData, ...rawData];
+  const withEbay = all.filter(i => liveCache[i.id]?.ebay?.medianDKK > 0)
+    .sort((a,b) => (liveCache[b.id]?.ebay?.medianDKK||0) - (liveCache[a.id]?.ebay?.medianDKK||0))
+    .slice(0, 5);
+  if(!withEbay.length) return '';
+  const rows = withEbay.map(item => {
+    const eb = liveCache[item.id].ebay;
+    return `<div style="display:flex;align-items:baseline;gap:.5rem;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
+      <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(item.productName.substring(0,30))}</div>
+      <div style="color:var(--gold);font-weight:700;white-space:nowrap">${fmtDKK(eb.medianDKK)}</div>
+      <div style="color:var(--faint);font-size:.65rem;white-space:nowrap">${eb.count} listings</div>
+    </div>`;
+  }).join('');
+  return `<div style="margin-top:.5rem">
+    <div style="font-size:.68rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.3rem">eBay Live Priser (top ${withEbay.length})</div>
+    ${rows}
+  </div>`;
+}
+
 function renderEbayPriceSection(item){
   const d = liveCache[item.id];
   const eb = d?.ebay;
@@ -1984,10 +2053,12 @@ function getTradeItemData(item){
   const psa10est = mults?.psa10 ? fmtDKK(val * mults.psa10) : null;
   const psa9est  = mults?.psa9  ? fmtDKK(val * mults.psa9)  : null;
 
+  const eb = liveCache[item.id]?.ebay;
   let rows = `
     <div class="trade-stat-row"><span class="trade-stat-label">Markedsværdi</span><span class="trade-stat-val gold">${fmtDKK(val)}</span></div>
     <div class="trade-stat-row"><span class="trade-stat-label">Kostpris</span><span class="trade-stat-val">${fmtDKK(cost)}</span></div>
     <div class="trade-stat-row"><span class="trade-stat-label">P/L</span><span class="trade-stat-val ${pl>=0?'green':'red'}">${fmtDKK(pl)} (${plPct_.toFixed(1)}%)</span></div>
+    ${eb?.medianDKK ? `<div class="trade-stat-row"><span class="trade-stat-label">eBay Median</span><span class="trade-stat-val" style="color:var(--gold)">${fmtDKK(eb.medianDKK)}</span></div>` : ''}
     ${liveAvg ? `<div class="trade-stat-row"><span class="trade-stat-label">CM Live avg</span><span class="trade-stat-val teal">€${liveAvg.toFixed(2)}</span></div>` : ''}
     ${psa9est  ? `<div class="trade-stat-row"><span class="trade-stat-label">PSA 9 potentiale</span><span class="trade-stat-val" style="color:var(--green)">${psa9est}</span></div>` : ''}
     ${psa10est ? `<div class="trade-stat-row"><span class="trade-stat-label">PSA 10 potentiale</span><span class="trade-stat-val teal">${psa10est}</span></div>` : ''}
@@ -2173,7 +2244,7 @@ function clearSearch(){ document.getElementById('searchInput').value=''; documen
 // TAB
 // ═══════════════════════════════════════════════════════
 function switchTab(tab){
-  activeTab=tab; filterCat='Alle'; sortCol='name'; sortAsc=true; expandedRows=new Set(); expandedRow=null;
+  activeTab=tab; filterCat='Alle'; filterRec=''; sortCol='name'; sortAsc=true; expandedRows=new Set(); expandedRow=null;
   document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   const tabEl = document.getElementById('tab-'+tab); if(tabEl) tabEl.classList.add('active');
   const isOverview  = tab==='overview';
@@ -3417,7 +3488,7 @@ function renderDashboard(){
 
   <!-- MODULE: KPIs -->
   <div class="dash-module" data-module-id="kpis" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-toggle" onclick="toggleModule('kpis')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-toggle" onclick="toggleModule(\'kpis\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="kpi-grid">
         <div class="kpi"><div class="kpi-accent" style="background:var(--primary)"></div><div class="kpi-label">Total Kostpris</div><div class="kpi-value">${fmtDKK(totalCost)}</div><div class="kpi-sub">${totalItems} poster · ${totalQty} stk</div></div>
@@ -3435,7 +3506,7 @@ function renderDashboard(){
 
   <!-- MODULE: Kategori & Fordeling -->
   <div class="dash-module" data-module-id="cat-charts" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-toggle" onclick="toggleModule('cat-charts')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-toggle" onclick="toggleModule(\'cat-charts\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
         <div class="chart-card"><div class="chart-title">P/L per kategori</div><div class="chart-wrap"><canvas id="chartCatPL"></canvas></div></div>
@@ -3448,7 +3519,7 @@ function renderDashboard(){
 
   <!-- MODULE: Kapitalforbrug -->
   <div class="dash-module" data-module-id="monthly" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule('monthly')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule(\'monthly\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="chart-card">
         <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.4rem;margin-bottom:.5rem">
@@ -3470,7 +3541,7 @@ function renderDashboard(){
   ${analysedCount>0?`
   <!-- MODULE: AI Indsigter -->
   <div class="dash-module" data-module-id="ai-insights" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-toggle" onclick="toggleModule('ai-insights')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-toggle" onclick="toggleModule(\'ai-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
         <div class="chart-card">
@@ -3498,7 +3569,7 @@ function renderDashboard(){
 
   <!-- MODULE: Top Performers -->
   <div class="dash-module" data-module-id="top-performers" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-toggle" onclick="toggleModule('top-performers')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-toggle" onclick="toggleModule(\'top-performers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="dash-two">
         <div class="chart-card">
@@ -3522,7 +3593,7 @@ function renderDashboard(){
 
   <!-- MODULE: Koncentrationsrisiko -->
   <div class="dash-module" data-module-id="concentration" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-toggle" onclick="toggleModule('concentration')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-toggle" onclick="toggleModule(\'concentration\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <table class="dash-table">
         <thead><tr><th>#</th><th>Navn</th><th>Type</th><th class="num">Markedsværdi</th><th class="num">% af portef.</th></tr></thead>
@@ -3535,7 +3606,7 @@ function renderDashboard(){
   ${gradeCandidates.length>0?`
   <!-- MODULE: Grading Kandidater -->
   <div class="dash-module" data-module-id="grading-cands" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-toggle" onclick="toggleModule('grading-cands')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-toggle" onclick="toggleModule(\'grading-cands\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">Estimerede PSA-værdier baseret på råpris × historiske præmier for kortets stand. <strong>Ikke finansiel rådgivning</strong> — brug som vejledning.</p>
       <div style="overflow-x:auto">
@@ -3579,7 +3650,7 @@ function renderDashboard(){
 
   <!-- MODULE: Automatiske indsigter -->
   <div class="dash-module" data-module-id="auto-insights" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-toggle" onclick="toggleModule('auto-insights')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-toggle" onclick="toggleModule(\'auto-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="insight-list">${insights.map(i=>`<div class="insight-item ${i.cls}"><span class="insight-ico">${i.ico}</span><span>${i.txt}</span></div>`).join('')
       || '<div class="insight-item info"><span class="insight-ico">🤖</span><span>Kør AI-analyse på dine poster for at se personlige indsigter.</span></div>'}
@@ -3590,7 +3661,7 @@ function renderDashboard(){
 
   <!-- MODULE: LIVE MARKEDSPRISER -->
   <div class="dash-module" data-module-id="live-prices" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule('live-prices')">-</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule(\'live-prices\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
         <div class="live-api-banner">
@@ -3605,6 +3676,9 @@ function renderDashboard(){
       <div id="livePricesContainer">
         ${Object.keys(liveCache).length > 0 ? renderLivePricesSummary() : `<div style="font-size:.8rem;color:var(--muted);padding:.5rem 0">Klik 'Hent top 10 live priser' for at hente aktuelle Cardmarket EU-priser for dine mest værdifulde kort.</div>`}
       </div>
+      <div id="ebayTopPricesContainer" style="margin-top:.65rem">
+        ${renderEbayTopListings()}
+      </div>
       <div style="margin-top:.6rem;font-size:.68rem;color:var(--faint)">Kilde: <a href="https://tcgdex.dev" target="_blank" style="color:var(--teal)">TCGdex API</a> (Cardmarket EU data, opdateres dagligt) · <a href="https://www.cardmarket-api.com" target="_blank" style="color:var(--teal)">cardmarket-api.com</a> (DE/FR/ES/IT, kræver API-nøgle)</div>
     </div>
     <div class="module-resize" onmousedown="startResize(event,'live-prices')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
@@ -3614,7 +3688,7 @@ function renderDashboard(){
 
   <!-- MODULE: TCG Oversigt -->
   <div class="dash-module" data-module-id="per-game" data-span="2" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 TCG Oversigt</span><button class="module-toggle" onclick="toggleModule('per-game')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 TCG Oversigt</span><button class="module-toggle" onclick="toggleModule(\'per-game\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       ${renderPerGameModule()}
     </div>
@@ -3623,7 +3697,7 @@ function renderDashboard(){
 
   <!-- MODULE: Market Movers -->
   <div class="dash-module" data-module-id="market-movers" draggable="true">
-    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule('market-movers')">－</button></div>
+    <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule(\'market-movers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
         <div style="font-size:.72rem;color:var(--muted)">Prisændringer vs. 7-dages gennemsnit (kun kort med live priser)</div>
@@ -3637,12 +3711,25 @@ function renderDashboard(){
     <div class="module-resize" onmousedown="startResize(event,'market-movers')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
   </div>
 
+  <!-- MODULE: Prishistorik -->
+  <div class="dash-module" data-module-id="price-history" draggable="true">
+    <div class="module-header">
+      <span class="module-drag-handle">⠿</span>
+      <span class="module-title">📈 Prishistorik</span>
+      <button class="module-toggle" onclick="toggleModule('price-history')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button>
+    </div>
+    <div class="module-body">
+      <div id="dashPriceHistoryContent">${renderDashPriceHistory()}</div>
+    </div>
+    <div class="module-resize" onmousedown="startResize(event,'price-history')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+  </div>
+
   <!-- MODULE: Event Spike Tracker -->
   <div class="dash-module" data-module-id="spike-tracker" data-span="2" draggable="true">
     <div class="module-header">
       <span class="module-drag-handle">⠿</span>
       <span class="module-title">⚡ Event Spike Tracker</span>
-      <button class="module-toggle" onclick="toggleModule('spike-tracker')">－</button>
+      <button class="module-toggle" onclick="toggleModule(\'spike-tracker\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button>
     </div>
     <div class="module-body" id="spikeTrackerBody">
       ${renderSpikeTracker()}
@@ -3741,7 +3828,8 @@ function render(){
       return qParts.every(part => name.includes(part)||set.includes(part)||num.includes(part)||grade.includes(part)||cat.includes(part));
     })();
     const mc = filterCat==='Alle' || item.category===filterCat;
-    return ms && mc;
+    const mr = !filterRec || (aiCache[item.id]?.recommendation === filterRec);
+    return ms && mc && mr;
   });
 
   filtered.sort((a,b)=>{
@@ -3793,6 +3881,15 @@ function renderSummary(data, filtered){
 function renderToolbar(data){
   const cats=['Alle',...new Set(data.map(d=>d.category).filter(Boolean))];
   const chips=cats.map(c=>`<button class="chip${filterCat===c?' active':''}" onclick="setFilterCat('${esc(c)}')">${esc(c)}</button>`).join('');
+  // AI filter: vis kun specifikke anbefalinger
+  const aiRecs = [...new Set(data.map(d=>aiCache[d.id]?.recommendation).filter(Boolean))];
+  const aiFilterChips = aiRecs.length ? `
+    <div style="display:flex;gap:.3rem;flex-wrap:wrap;align-items:center;margin-left:auto">
+      <span style="font-size:.65rem;color:var(--muted);font-weight:600">AI:</span>
+      <button class="chip${filterRec===''?' active':''}" onclick="setFilterRec('')" style="font-size:.68rem;padding:.1rem .4rem">Alle</button>
+      ${aiRecs.map(r=>`<button class="chip${filterRec===r?' active':''}" onclick="setFilterRec('${esc(r)}')" style="font-size:.68rem;padding:.1rem .4rem">${esc(r)}</button>`).join('')}
+    </div>` : '';
+
   const sortOpts=activeTab==='graded'
     ?`<option value="name">Navn</option><option value="set">Sæt</option><option value="score">AI-score</option><option value="value">Markedspris</option><option value="pl">P/L</option><option value="date">Dato</option>`
     :activeTab==='raw'
@@ -3804,12 +3901,13 @@ function renderToolbar(data){
   const progHtml = isAnalysingThisTab && globalProgEl
     ? `<div class="analyse-progress" id="analyseProgress" style="flex:1">${globalProgEl.innerHTML}</div>`
     : `<div class="analyse-progress" id="analyseProgress" style="flex:1"></div>`;
-  document.getElementById('toolbar').innerHTML=chips+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select><div class="tb-sep"></div><button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" ${apiKey?'':'disabled'}>` +
+  document.getElementById('toolbar').innerHTML=chips+(aiFilterChips||'')+`<div class="tb-sep"></div><select class="sort-sel" onchange="setSort(this.value)" id="sortSel">${sortOpts}</select><div class="tb-sep"></div><button class="btn-analyse-all" id="batchBtn" onclick="runBatchAnalysis()" ${apiKey?'':'disabled'}>` +
     `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2a10 10 0 1 0 10 10"/><path d="m17 7 5-5"/><path d="M17 2h5v5"/></svg> Analyser alle (AI)</button>`+progHtml;
   document.getElementById('sortSel').value=sortCol;
 }
 
 function setFilterCat(c){ filterCat=c; render(); }
+function setFilterRec(r){ filterRec=r; render(); }
 function setSort(c){ sortCol===c?sortAsc=!sortAsc:(sortCol=c,sortAsc=true); render(); }
 function thA(c){ const s=sortCol===c; return `<span class="s-arr">${s?(sortAsc?'↑':'↓'):'↕'}</span>`; }
 
@@ -4753,6 +4851,7 @@ function renderWatchlist(){
       <div class="wl-panel-title">👁 Watchlist <span style="font-size:.8rem;font-weight:400;color:var(--muted);margin-left:.35rem">${watchlistData.length} poster</span></div>
       <div style="display:flex;gap:.5rem">
         <button class="btn-live" onclick="fetchWatchlistPrices()" style="font-size:.75rem;padding:.25rem .65rem">🔄 Hent priser</button>
+        ${supaUser ? `<button class="btn-live" onclick="syncWatchlistToSupabase().then(()=>showToast('✅ Watchlist synkroniseret'))" style="font-size:.72rem;padding:.2rem .5rem;opacity:.7">☁️ Synk</button>` : ''}
       </div>
     </div>
     ${alarmBanner}
@@ -4799,6 +4898,48 @@ function deleteItem(id){
 // ═══════════════════════════════════════════════════════
 // TOAST
 // ═══════════════════════════════════════════════════════
+function openSupport(){
+  let overlay = document.getElementById('supportOverlay');
+  if(overlay){ overlay.remove(); return; }
+  overlay = document.createElement('div');
+  overlay.id = 'supportOverlay';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:2000;display:flex;align-items:center;justify-content:center;padding:1.5rem;backdrop-filter:blur(4px)';
+  overlay.innerHTML = `
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:.85rem;padding:1.5rem;max-width:480px;width:100%;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem">
+        <span style="font-size:1rem;font-weight:800">⚡ Vaultr Support</span>
+        <button onclick="document.getElementById('supportOverlay').remove()" style="background:none;border:none;color:var(--muted);font-size:1.2rem;cursor:pointer;padding:.2rem .4rem;border-radius:.3rem" ontouchstart="">×</button>
+      </div>
+      <div style="font-size:.82rem;line-height:1.7;color:var(--text)">
+        <div style="margin-bottom:1rem">
+          <div style="font-weight:700;color:var(--primary);margin-bottom:.4rem">🚀 Kom godt i gang</div>
+          <div>1. Upload din CSV fra Cardmarket via <strong>Upload CSV</strong>-knappen</div>
+          <div>2. Klik <strong>🤖 Analysér alle (AI)</strong> for at få investeringsanalyse</div>
+          <div>3. Hent live priser via <strong>🔄 Hent priser</strong> i dashboardet</div>
+          <div>4. Tilføj kort til <strong>👁 Watchlist</strong> for at overvåge priser</div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <div style="font-weight:700;color:var(--teal);margin-bottom:.4rem">🔑 API-nøgler</div>
+          <div><strong>Perplexity:</strong> Kræves til AI-analyse. Hent på <a href="https://www.perplexity.ai/settings/api" target="_blank" style="color:var(--teal)">perplexity.ai/settings/api</a></div>
+          <div><strong>CM API:</strong> Valgfri. DE/FR/ES/IT live priser</div>
+          <div><strong>PSA API:</strong> Valgfri. Cert-opslag og population</div>
+          <div><strong>eBay API:</strong> App ID + Cert ID fra developer.ebay.com</div>
+        </div>
+        <div style="margin-bottom:1rem">
+          <div style="font-weight:700;color:var(--gold);margin-bottom:.4rem">📊 CSV-format</div>
+          <div>Vaultr accepterer CSV-eksport fra <strong>Cardmarket Portfolio</strong>.</div>
+          <div>Kolonner: Portfolio Name, Name, Expansion, Number, Rarity, Condition, Quantity, Purchase Price, Market Price</div>
+        </div>
+        <div>
+          <div style="font-weight:700;color:var(--muted);margin-bottom:.4rem">❓ Spørgsmål?</div>
+          <div>Kontakt: <a href="mailto:mka@siniusinvest.dk" style="color:var(--primary)">mka@siniusinvest.dk</a></div>
+        </div>
+      </div>
+    </div>`;
+  overlay.addEventListener('click', e => { if(e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg; t.classList.add('show');
