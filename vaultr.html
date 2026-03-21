@@ -893,9 +893,9 @@ async function loadFromSupabase() {
       supa.from('raw_items').select('id,data').eq('user_id', supaUser.id),
       supa.from('ai_cache').select('item_id,data').eq('user_id', supaUser.id),
     ]);
-    if(!g.error) gradedData = g.data.map(r=>r.data);
-    if(!s.error) sealedData = s.data.map(r=>r.data);
-    if(!r.error) rawData    = r.data.map(r=>r.data);
+    if(!g.error) { gradedData = g.data.map(r=>r.data); localStorage.setItem('pf_graded', JSON.stringify(gradedData)); }
+    if(!s.error) { sealedData = s.data.map(r=>r.data); localStorage.setItem('pf_sealed', JSON.stringify(sealedData)); }
+    if(!r.error) { rawData    = r.data.map(r=>r.data); localStorage.setItem('pf_raw',    JSON.stringify(rawData)); }
     if(!ai.error) {
       aiCache = {};
       ai.data.forEach(r => aiCache[r.item_id] = r.data);
@@ -1038,10 +1038,11 @@ function saveEbayApiKey(){
   if(!id || !secret){ showToast('❌ Udfyld begge eBay felter'); return; }
   localStorage.setItem('pf_ebay_id', id);
   localStorage.setItem('pf_ebay_secret', secret);
-  ebayToken = null; ebayTokenExpiry = 0; // Reset token cache
+  ebayToken = null; ebayTokenExpiry = 0;
   const st = document.getElementById('ebayKeyStatus');
   if(st){ st.textContent = '✓ Aktiv'; st.classList.add('ok'); }
   showToast('✅ eBay API nøgler gemt — live eBay-priser aktiveret');
+  saveUserSettingsToSupabase();
 }
 
 function initEbayApiKey(){
@@ -1180,6 +1181,8 @@ async function saveUserSettingsToSupabase(){
     psa_key:     localStorage.getItem('pf_psa_key')    || '',
     ebay_id:     localStorage.getItem('pf_ebay_id')    || '',
     ebay_secret: localStorage.getItem('pf_ebay_secret')|| '',
+    lang:        localStorage.getItem('pf_lang')        || 'da',
+    dash_layout: localStorage.getItem('pf_dash_layout') || '',
   };
   try{
     await supa.from('user_settings').upsert({
@@ -1200,9 +1203,12 @@ async function loadUserSettingsFromSupabase(){
     if(s.psa_key)     { localStorage.setItem('pf_psa_key',     s.psa_key); }
     if(s.ebay_id)     { localStorage.setItem('pf_ebay_id',     s.ebay_id); }
     if(s.ebay_secret) { localStorage.setItem('pf_ebay_secret', s.ebay_secret); }
+    if(s.lang)        { localStorage.setItem('pf_lang',        s.lang);   currentLang = s.lang; }
+    if(s.dash_layout) { localStorage.setItem('pf_dash_layout', s.dash_layout); dashLayout = JSON.parse(s.dash_layout); }
     // Opdater UI
     initApiKey(); initCMApiKey(); initPSAApiKey(); initEbayApiKey();
-    console.log('✅ API-nøgler hentet fra cloud');
+    applyLang();
+    console.log('✅ Indstillinger hentet fra cloud');
   } catch(e){ console.warn('Settings load fejl:', e); }
 }
 
@@ -3044,6 +3050,8 @@ function saveDashLayout() {
   });
   dashLayout = layout;
   localStorage.setItem('pf_dash_layout', JSON.stringify(layout));
+  // Cloud sync af dashboard layout
+  saveUserSettingsToSupabase();
 }
 
 function toggleModule(id) {
@@ -5263,6 +5271,7 @@ function t(key){ return (TRANSLATIONS[currentLang]||TRANSLATIONS['en'])[key] || 
 function setLang(lang){
   currentLang = lang;
   localStorage.setItem('pf_lang', lang);
+  saveUserSettingsToSupabase();
   document.getElementById('langSel').value = lang;
   applyLang();
   if(activeTab==='overview') renderDashboard(); else render();
