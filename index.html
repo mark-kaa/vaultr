@@ -1059,7 +1059,101 @@ function initCMApiKey(){
 // ═══════════════════════════════════════════════════════
 // LIVE MARKEDSPRIS — TCGdex + cardmarket-api.com
 // ═══════════════════════════════════════════════════════
-// Cache: { [itemId]: { tcgdex: {...}, cm: {...}, fetchedAt: timestamp } }
+// ── eBay API — nøgler gemmes i localStorage, aldrig i kode ──
+// Gem nøgler via: localStorage.setItem('pf_ebay_id', '...'); localStorage.setItem('pf_ebay_secret', '...');
+let ebayToken = null;
+let ebayTokenExpiry = 0;
+
+function getEbayKeys(){
+  return {
+    id:     localStorage.getItem('pf_ebay_id')     || '',
+    secret: localStorage.getItem('pf_ebay_secret') || '',
+  };
+}
+
+async function getEbayToken(){
+  if(ebayToken && Date.now() < ebayTokenExpiry - 60000) return ebayToken;
+  const { id, secret } = getEbayKeys();
+  if(!id || !secret) return null;
+  try{
+    const creds = btoa(id + ':' + secret);
+    const r = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+      method: 'POST',
+      headers: { 'Authorization': 'Basic '+creds, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope'
+    });
+    if(!r.ok) return null;
+    const d = await r.json();
+    ebayToken = d.access_token;
+    ebayTokenExpiry = Date.now() + (d.expires_in * 1000);
+    return ebayToken;
+  } catch(e){ console.warn('eBay token fejl:', e); return null; }
+}
+
+async function fetchEbayPrice(item){
+  const token = await getEbayToken();
+  if(!token) return null;
+  
+  const isGraded = item.grade && item.grade !== 'Ungraded';
+  const isSealed = (item.portfolioName||'').toLowerCase().includes('sealed');
+  
+  // Byg præcis søgeforespørgsel
+  let query = item.productName.replace(/\s*\(JP\)\s*/i,'').replace(/\s*PSA.*$/i,'').trim();
+  if(isGraded && item.grade) query += ' ' + item.grade;
+  else if(!isSealed) query += ' pokemon card';
+  if(item.cardNumber && !isSealed) query += ' ' + item.cardNumber;
+  
+  try{
+    const params = new URLSearchParams({
+      q: query,
+      limit: '5',
+      filter: 'buyingOptions:{FIXED_PRICE}',
+    });
+    const r = await fetch('https://api.ebay.com/buy/browse/v1/item_summary/search?' + params, {
+      headers: {
+        'Authorization': 'Bearer ' + token,
+        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE',
+      }
+    });
+    if(!r.ok) return null;
+    const d = await r.json();
+    const items = d.itemSummaries || [];
+    if(!items.length) return null;
+    
+    // Filtrer: kun items der indeholder kortnavnet
+    const cleanName = item.productName.replace(/\s*\(JP\)\s*/i,'').replace(/\s*PSA.*$/i,'').trim().toLowerCase();
+    const relevant = items.filter(i => {
+      const t = (i.title||'').toLowerCase();
+      const words = cleanName.split(' ').filter(w => w.length > 2);
+      return words.filter(w => t.includes(w)).length >= Math.ceil(words.length * 0.6);
+    });
+    const pool = relevant.length ? relevant : items;
+    
+    // Beregn median pris (EUR → DKK)
+    const prices = pool.map(i => parseFloat(i.price?.value||0) * eurToDkk).filter(p => p > 0);
+    if(!prices.length) return null;
+    prices.sort((a,b) => a-b);
+    const median = prices[Math.floor(prices.length/2)];
+    const min    = prices[0];
+    const max    = prices[prices.length-1];
+    
+    return {
+      medianDKK: Math.round(median),
+      minDKK:    Math.round(min),
+      maxDKK:    Math.round(max),
+      count:     pool.length,
+      query:     query,
+      listings:  pool.slice(0,3).map(i => ({
+        title: i.title,
+        priceDKK: Math.round(parseFloat(i.price?.value||0) * eurToDkk),
+        url: i.itemWebUrl,
+      })),
+      fetchedAt: Date.now(),
+    };
+  } catch(e){ console.warn('eBay søgning fejl:', e); return null; }
+}
+
+// Cache: { [itemId]: { tcgdex: {...}, cm: {...}, ebay: {...}, fetchedAt: timestamp } }
 let liveCache = JSON.parse(localStorage.getItem('pf_live_cache') || '{}');
 const LIVE_TTL = 3 * 60 * 60 * 1000; // 3 timer cache TTL
 
@@ -1171,10 +1265,11 @@ async function fetchCardmarketAPI(item){
     const d = await res.json();
     const cards = d.data || [];
     if(!cards.length) return null;
-    // Find bedste match: foretruk kort med samme navn (case-insensitive)
-    const cleanName = (item.productName||'').replace(/\s+PSA.*$/i,'').toLowerCase().trim();
-    const match = cards.find(c => (c.name||'').toLowerCase() === cleanName) || cards[0];
-    return match;
+    // Kun præcist match — ellers returnér null (ikke upræcise priser)
+    const cleanName = (item.productName||'').replace(/\s+PSA.*$/i,'').replace(/\s*\(JP\)\s*/i,'').toLowerCase().trim();
+    const exactMatch = cards.find(c => (c.name||'').toLowerCase() === cleanName);
+    if(!exactMatch) return null; // Ingen upræcis pris — vis ingenting
+    return exactMatch;
   } catch(e){ console.warn('CM API fejl:', e); }
   return null;
 }
@@ -1185,15 +1280,17 @@ async function fetchLivePrice(item){
   const cached = liveCache[cid];
   if(cached && (Date.now()-cached.fetchedAt < LIVE_TTL)) return cached;
 
-  const [tcgdex, cmapi] = await Promise.allSettled([
+  const [tcgdex, cmapi, ebay] = await Promise.allSettled([
     fetchTCGdex(item),
     fetchCardmarketAPI(item),
+    fetchEbayPrice(item),
   ]);
 
   const result = {
     fetchedAt: Date.now(),
     tcgdex: tcgdex.status==='fulfilled' ? tcgdex.value : null,
     cmapi:  cmapi.status==='fulfilled'  ? cmapi.value  : null,
+    ebay:   ebay.status==='fulfilled'   ? ebay.value   : null,
   };
   liveCache[cid] = result;
   saveLiveCache();
@@ -1304,6 +1401,7 @@ function renderEUPricePanel(item){
       </div>
       ${renderPriceHistorySVG(item.id)}
       ${renderPriceByCondition(item)}
+      ${renderEbayPriceSection(item)}
     </div>`;
 }
 
@@ -1494,6 +1592,43 @@ function renderMarketMovers(){
 
 
 // ── FEATURE A: Prishistorik sparkline (avg1/avg7/avg30/low/trend) ──
+function renderEbayPriceSection(item){
+  const d = liveCache[item.id];
+  const eb = d?.ebay;
+  if(!eb || !eb.medianDKK) return '';
+
+  const isGraded = item.grade && item.grade !== 'Ungraded';
+  const listings = (eb.listings||[]).map(l =>
+    `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.75rem">
+      <a href="${esc(l.url)}" target="_blank" style="color:var(--text);text-decoration:none;flex:1;margin-right:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.title)}">${esc((l.title||'').substring(0,52))}${l.title&&l.title.length>52?'…':''}</a>
+      <span style="color:var(--gold);font-weight:700;white-space:nowrap">${fmtDKK(l.priceDKK)}</span>
+    </div>`
+  ).join('');
+
+  return `<div style="margin-top:.75rem;padding-top:.65rem;border-top:1px solid var(--border)">
+    <div style="display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem">
+      <span style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">eBay live priser</span>
+      <span style="font-size:.65rem;color:var(--faint)">${eb.count} listings · DE marked</span>
+    </div>
+    <div style="display:flex;gap:.75rem;margin-bottom:.5rem">
+      <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.3rem .5rem;text-align:center">
+        <div style="font-size:.6rem;color:var(--muted)">Median</div>
+        <div style="font-size:.9rem;font-weight:800;color:var(--gold)">${fmtDKK(eb.medianDKK)}</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.3rem .5rem;text-align:center">
+        <div style="font-size:.6rem;color:var(--muted)">Min</div>
+        <div style="font-size:.82rem;font-weight:700;color:var(--text)">${fmtDKK(eb.minDKK)}</div>
+      </div>
+      <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.3rem .5rem;text-align:center">
+        <div style="font-size:.6rem;color:var(--muted)">Max</div>
+        <div style="font-size:.82rem;font-weight:700;color:var(--text)">${fmtDKK(eb.maxDKK)}</div>
+      </div>
+    </div>
+    ${listings}
+    <div style="font-size:.6rem;color:var(--faint);margin-top:.3rem">eBay.de · Fixed Price · EUR→DKK @${eurToDkk.toFixed(2)}</div>
+  </div>`;
+}
+
 function renderPriceHistoryPanel(item){
   const d = liveCache[item.id];
   if(!d?.tcgdex?.cm) return '';
