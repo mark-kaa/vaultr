@@ -4514,11 +4514,14 @@ function renderWatchlist(){
   if(!container) return;
 
   if(!watchlistData.length){
+    const debugInfo = `localStorage pf_watch: ${localStorage.getItem('pf_watch')||'(tom)'}`.substring(0,100);
     container.innerHTML = `
       <div class="wl-empty">
         <div style="font-size:2.5rem;margin-bottom:.75rem">👁</div>
         <div style="font-weight:700;font-size:1rem;margin-bottom:.4rem">Watchlist er tom</div>
-        <div style="font-size:.82rem">Klik 👁 på et kort i Graded, Sealed eller Raw for at følge det</div>
+        <div style="font-size:.82rem;margin-bottom:.5rem">Klik 👁 på et kort i Graded, Sealed eller Raw for at følge det</div>
+        <div style="font-size:.65rem;color:var(--faint);font-family:monospace">${debugInfo}</div>
+        <button class="btn-live" onclick="(()=>{const raw=localStorage.getItem('pf_watch');alert('pf_watch: '+(raw||'TOM')+'\nwatchlistData.length: '+watchlistData.length)})()" style="margin-top:.5rem;font-size:.72rem">Debug localStorage</button>
       </div>`;
     return;
   }
