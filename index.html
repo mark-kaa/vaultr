@@ -639,12 +639,16 @@ tbody tr:hover .btn-watch{opacity:.7}
       <option value="pt">🇵🇹 PT</option>
       <option value="it">🇮🇹 IT</option>
     </select>
-    <div id="userChipWrap" style="display:none;display:flex;align-items:center;gap:.4rem">
-      <div class="user-chip" style="cursor:default">
+    <div id="userChipWrap" style="display:none;position:relative">
+      <button class="user-chip" id="userChipBtn" onclick="toggleUserMenu()" style="cursor:pointer;border:none;background:none;padding:0">
         <div class="user-dot"></div>
         <span id="userEmail" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+      </button>
+      <div id="userMenuDrop" style="display:none;position:absolute;top:calc(100% + 8px);right:0;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.35rem;z-index:9999;box-shadow:0 8px 24px rgba(0,0,0,.5);min-width:180px">
+        <div style="padding:.4rem .65rem .5rem;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:.3rem" id="userMenuEmail"></div>
+        <button onclick="doLogout()" style="width:100%;text-align:left;padding:.5rem .65rem;border-radius:.35rem;background:none;border:none;color:#f87171;font-size:.85rem;cursor:pointer;font-weight:600;-webkit-tap-highlight-color:transparent">🚪 Log ud</button>
       </div>
-      <button onclick="supa.auth.signOut()" title="Log ud" style="padding:.25rem .5rem;border-radius:.35rem;border:1px solid var(--border);background:none;color:var(--muted);font-size:.72rem;cursor:pointer;white-space:nowrap" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Log ud</button>
     </div>
     <div id="syncStatus" class="sync-indicator" style="display:none">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
@@ -822,25 +826,31 @@ async function submitSignup() {
     setTimeout(()=>switchAuthTab('login'), 2000);
   }
 }
-function showUserMenu() {
-  // Toggle dropdown menu
-  let menu = document.getElementById('userDropdown');
-  if(menu){ menu.remove(); return; }
-  const chip = document.querySelector('.user-chip');
-  const rect = chip.getBoundingClientRect();
-  menu = document.createElement('div');
-  menu.id = 'userDropdown';
-  menu.style.cssText = `position:fixed;top:${rect.bottom+6}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.35rem;z-index:9999;box-shadow:0 8px 24px #0008;min-width:160px`;
-  const email = supaUser?.email || '';
-  menu.innerHTML = `
-    <div style="padding:.4rem .65rem;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:.25rem">${esc(email)}</div>
-    <button onclick="supa.auth.signOut();document.getElementById('userDropdown')?.remove()" style="width:100%;text-align:left;padding:.45rem .65rem;border-radius:.35rem;background:none;border:none;color:var(--red);font-size:.82rem;cursor:pointer;font-weight:600">🚪 Log ud</button>
-  `;
-  document.body.appendChild(menu);
-  setTimeout(() => document.addEventListener('click', function closeMenu(e){
-    if(!menu.contains(e.target) && !chip.contains(e.target)){ menu.remove(); document.removeEventListener('click', closeMenu); }
-  }), 10);
+function toggleUserMenu(){
+  const drop = document.getElementById('userMenuDrop');
+  if(!drop) return;
+  const isOpen = drop.style.display === 'block';
+  drop.style.display = isOpen ? 'none' : 'block';
+  if(!isOpen){
+    const emailEl = document.getElementById('userMenuEmail');
+    if(emailEl) emailEl.textContent = supaUser?.email || '';
+    // Luk ved klik udenfor
+    setTimeout(()=>{
+      document.addEventListener('click', function closeIt(e){
+        const btn = document.getElementById('userChipBtn');
+        if(!drop.contains(e.target) && e.target !== btn && !btn?.contains(e.target)){
+          drop.style.display = 'none';
+          document.removeEventListener('click', closeIt);
+        }
+      });
+    }, 50);
+  }
 }
+function doLogout(){
+  document.getElementById('userMenuDrop').style.display = 'none';
+  supa.auth.signOut();
+}
+function showUserMenu(){ toggleUserMenu(); }
 
 // ── Sync helpers ──
 function showSync(state, txt) {
@@ -2161,7 +2171,17 @@ function switchTab(tab){
   const ap = document.getElementById('analyseProgress'); if(ap && !batchRunning) ap.innerHTML = '';
   if(isOverview){ renderDashboard(); }
   else if(isWatchlist){
-    // Vis localStorage data med det samme
+    // Force re-load fra localStorage inden render
+    const stored = localStorage.getItem('pf_watch');
+    if(stored && stored !== '[]'){
+      try{
+        const parsed = JSON.parse(stored);
+        if(parsed.length > watchlistData.length){
+          watchlistData.length = 0;
+          parsed.forEach(w => watchlistData.push(w));
+        }
+      } catch(e){}
+    }
     renderWatchlist();
     // Hent evt. nye data fra Supabase i baggrunden
     if(supaUser) loadWatchlistFromSupabase().then(() => renderWatchlist());
