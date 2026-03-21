@@ -778,6 +778,7 @@ supa.auth.onAuthStateChange(async (event, session) => {
     document.getElementById('userChipWrap').style.display = '';
     document.getElementById('userEmail').textContent = supaUser.email;
     document.getElementById('authOverlay').classList.add('hidden');
+    await loadUserSettingsFromSupabase();
     await loadFromSupabase();
     await loadPriceHistoryFromSupabase();
     await loadWatchlistFromSupabase();
@@ -1008,6 +1009,8 @@ function saveApiKey(){
   const bb = document.getElementById('batchBtn'); if(bb) bb.disabled = false;
   showToast(t('saved_key'));
   render();
+
+  saveUserSettingsToSupabase();
 }
 function saveCMApiKey(){
   const key = document.getElementById('cmApiKeyInput').value.trim();
@@ -1015,6 +1018,8 @@ function saveCMApiKey(){
   localStorage.setItem('pf_cmapi_key', key);
   document.getElementById('cmKeyStatus').textContent = '✓ Aktiv';
   showToast('✅ Cardmarket API-nøgle gemt — DE/FR/ES/IT priser aktiveret');
+
+  saveUserSettingsToSupabase();
 }
 function savePSAApiKey(){
   const key = document.getElementById('psaApiKeyInput').value.trim();
@@ -1024,6 +1029,8 @@ function savePSAApiKey(){
   showToast('✅ PSA API token gemt — cert-opslag aktiveret');
   // Re-render to update POP panels
   render();
+
+  saveUserSettingsToSupabase();
 }
 function saveEbayApiKey(){
   const id     = document.getElementById('ebayIdInput').value.trim();
@@ -1160,6 +1167,43 @@ function initCMApiKey(){
     document.getElementById('cmApiKeyInput').value = k;
     document.getElementById('cmKeyStatus').textContent = '✓ Aktiv';
   }
+}
+
+// ═══════════════════════════════════════════════════════
+// USER SETTINGS — gem API-nøgler i Supabase
+// ═══════════════════════════════════════════════════════
+async function saveUserSettingsToSupabase(){
+  if(!supaUser||!supa) return;
+  const settings = {
+    pplx_key:    localStorage.getItem('pf_api_key')    || '',
+    cm_key:      localStorage.getItem('pf_cmapi_key')  || '',
+    psa_key:     localStorage.getItem('pf_psa_key')    || '',
+    ebay_id:     localStorage.getItem('pf_ebay_id')    || '',
+    ebay_secret: localStorage.getItem('pf_ebay_secret')|| '',
+  };
+  try{
+    await supa.from('user_settings').upsert({
+      user_id: supaUser.id,
+      settings: settings,
+    }, { onConflict: 'user_id' });
+  } catch(e){ console.warn('Settings sync fejl:', e); }
+}
+
+async function loadUserSettingsFromSupabase(){
+  if(!supaUser||!supa) return;
+  try{
+    const { data, error } = await supa.from('user_settings').select('settings').eq('user_id', supaUser.id).single();
+    if(error || !data) return;
+    const s = data.settings || {};
+    if(s.pplx_key)    { localStorage.setItem('pf_api_key',     s.pplx_key);    apiKey = s.pplx_key; }
+    if(s.cm_key)      { localStorage.setItem('pf_cmapi_key',   s.cm_key); }
+    if(s.psa_key)     { localStorage.setItem('pf_psa_key',     s.psa_key); }
+    if(s.ebay_id)     { localStorage.setItem('pf_ebay_id',     s.ebay_id); }
+    if(s.ebay_secret) { localStorage.setItem('pf_ebay_secret', s.ebay_secret); }
+    // Opdater UI
+    initApiKey(); initCMApiKey(); initPSAApiKey(); initEbayApiKey();
+    console.log('✅ API-nøgler hentet fra cloud');
+  } catch(e){ console.warn('Settings load fejl:', e); }
 }
 
 // ═══════════════════════════════════════════════════════
