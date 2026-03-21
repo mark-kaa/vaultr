@@ -823,7 +823,23 @@ async function submitSignup() {
   }
 }
 function showUserMenu() {
-  if(confirm('Log ud af Vaultr?')) supa.auth.signOut();
+  // Toggle dropdown menu
+  let menu = document.getElementById('userDropdown');
+  if(menu){ menu.remove(); return; }
+  const chip = document.querySelector('.user-chip');
+  const rect = chip.getBoundingClientRect();
+  menu = document.createElement('div');
+  menu.id = 'userDropdown';
+  menu.style.cssText = `position:fixed;top:${rect.bottom+6}px;right:${window.innerWidth-rect.right}px;background:var(--surface);border:1px solid var(--border);border-radius:.5rem;padding:.35rem;z-index:9999;box-shadow:0 8px 24px #0008;min-width:160px`;
+  const email = supaUser?.email || '';
+  menu.innerHTML = `
+    <div style="padding:.4rem .65rem;font-size:.72rem;color:var(--muted);border-bottom:1px solid var(--border);margin-bottom:.25rem">${esc(email)}</div>
+    <button onclick="supa.auth.signOut();document.getElementById('userDropdown')?.remove()" style="width:100%;text-align:left;padding:.45rem .65rem;border-radius:.35rem;background:none;border:none;color:var(--red);font-size:.82rem;cursor:pointer;font-weight:600">🚪 Log ud</button>
+  `;
+  document.body.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', function closeMenu(e){
+    if(!menu.contains(e.target) && !chip.contains(e.target)){ menu.remove(); document.removeEventListener('click', closeMenu); }
+  }), 10);
 }
 
 // ── Sync helpers ──
