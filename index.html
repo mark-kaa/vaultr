@@ -3900,6 +3900,8 @@ function renderAIDetailRow(item, colSpan){
   const isGradedItem = item.grade && item.grade !== 'Ungraded' && item.gradingProvider;
   const defaultTab = detailTabState[item.id] || (isGradedItem ? 'graded' : 'raw');
   detailTabState[item.id] = defaultTab;
+  // Hvis graf-tab er default, initialiser chart efter render
+  if(defaultTab === 'graf') setTimeout(() => initPriceChart(item.id), 80);
 
   // Tab button helper
   const tabBtn = (tabId, label) =>
@@ -4185,10 +4187,12 @@ function closeModal(){ document.getElementById('modalBackdrop').classList.remove
 // ═══════════════════════════════════════════════════════
 
 function toggleWatchlist(itemId){
-  const src = activeTab; // 'graded' | 'sealed' | 'raw'
-  const arr  = src==='graded'?gradedData : src==='sealed'?sealedData : rawData;
-  const item = arr.find(i=>i.id===itemId);
+  // Søg i alle arrays — activeTab kan skifte
+  const item = gradedData.find(i=>i.id===itemId)
+             || sealedData.find(i=>i.id===itemId)
+             || rawData.find(i=>i.id===itemId);
   if(!item) return;
+  const src = gradedData.find(i=>i.id===itemId)?'graded':sealedData.find(i=>i.id===itemId)?'sealed':'raw';
   const existing = watchlistData.findIndex(w=>w.id===itemId);
   if(existing>=0){
     watchlistData.splice(existing,1);
@@ -4700,6 +4704,30 @@ if(_loader) _loader.style.display = 'none';
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/pokemon-samling/sw.js').catch(()=>{});
 }
+// ── Auto-opdatering af live priser i baggrunden ──
+// Kør ved opstart hvis > 4 timer siden sidst, derefter hver 6. time
+(async function autoLivePrices(){
+  const INTERVAL_MS = 6 * 60 * 60 * 1000; // 6 timer
+  const lastRun = parseInt(localStorage.getItem('pf_live_auto_ts') || '0');
+  const now = Date.now();
+  if(now - lastRun > INTERVAL_MS){
+    // Vent 3 sek efter appstart så UI er klar
+    await new Promise(r => setTimeout(r, 3000));
+    try{
+      await loadTopLivePrices();
+      localStorage.setItem('pf_live_auto_ts', String(Date.now()));
+      console.log('[Auto] Live priser opdateret');
+    } catch(e){ console.warn('[Auto] Live pris fejl:', e); }
+  }
+  // Gentag hver 6. time mens appen er åben
+  setInterval(async () => {
+    try{
+      await loadTopLivePrices();
+      localStorage.setItem('pf_live_auto_ts', String(Date.now()));
+      console.log('[Auto] Live priser opdateret (interval)');
+    } catch(e){ console.warn('[Auto] Live pris interval fejl:', e); }
+  }, INTERVAL_MS);
+})();
 </script>
 
 
