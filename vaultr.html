@@ -1341,8 +1341,10 @@ function fmtEURsimple(eur){
 // ── Render EU-prispanel til AI detail row ──
 function renderEUPricePanel(item){
   const d = liveCache[item.id];
+  // Vis eBay standalone selv uden CM data
   if(!d) return `
     <div class="eu-price-panel">
+      ${renderEbayPriceSection(item)}
       <div class="eu-price-title">
         <span class="cm-dot"></span> Cardmarket EU Live Priser
         <button class="btn-live" onclick="loadLivePricePanel('${item.id}')" style="margin-left:auto">
@@ -2140,7 +2142,12 @@ function switchTab(tab){
   const wp = document.getElementById('watchlistPanel'); if(wp) wp.style.display = isWatchlist?'':'none';
   const ap = document.getElementById('analyseProgress'); if(ap && !batchRunning) ap.innerHTML = '';
   if(isOverview){ renderDashboard(); }
-  else if(isWatchlist){ renderWatchlist(); }
+  else if(isWatchlist){
+    // Vis localStorage data med det samme
+    renderWatchlist();
+    // Hent evt. nye data fra Supabase i baggrunden
+    if(supaUser) loadWatchlistFromSupabase().then(() => renderWatchlist());
+  }
   else { render(); }
 }
 
@@ -3899,7 +3906,10 @@ function renderPriceChartPanel(item){
     ? '<div style="color:var(--muted);font-size:.82rem;padding:.75rem 0">Hent live priser for at se grafdata</div>'
     : '';
 
-  if(noDataMsg) return `<div style="padding:.5rem 0">${noDataMsg}</div>`;
+  if(!cm && !snaps.length) return `<div style="padding:.75rem 0;text-align:center">
+    <div style="color:var(--muted);font-size:.82rem;margin-bottom:.6rem">Ingen grafdata endnu</div>
+    <button class="btn-live" onclick="fetchLivePrice(gradedData.find(i=>i.id==='${item.id}')||sealedData.find(i=>i.id==='${item.id}')||rawData.find(i=>i.id==='${item.id}')).then(()=>render())" style="font-size:.75rem;padding:.25rem .65rem">🔄 Hent live priser</button>
+  </div>`;
 
   // Statistik
   const prices = points.map(p=>p.price);
@@ -3938,7 +3948,9 @@ function renderPriceChartPanel(item){
 function initPriceChart(itemId){
   const canvasId = 'price-chart-'+itemId;
   const canvas = document.getElementById(canvasId);
-  if(!canvas || canvas.dataset.chartReady) return;
+  if(!canvas) return;
+  // Re-initialiser altid — data kan være opdateret siden sidst
+  if(canvas._chartInstance){ canvas._chartInstance.destroy(); }
   canvas.dataset.chartReady = '1';
   // Sæt explicit px-størrelse så Chart.js ikke får 0x0
   const wrap = canvas.parentElement;
@@ -3980,7 +3992,8 @@ function initPriceChart(itemId){
   const pointR = deduped.map(p => p.synthetic ? 2 : 4);
 
   if(window.Chart){
-    new window.Chart(canvas, {
+    try{ if(canvas._chartInst) canvas._chartInst.destroy(); } catch(e){}
+    const chartInst = new window.Chart(canvas, {
       type: 'line',
       data: {
         labels,
@@ -4138,7 +4151,11 @@ function toggleDimExpand(uid, e){
   if(!isOpen) el.classList.add('open');
 }
 // Close dim expands on outside click
-document.addEventListener('click', ()=>{ document.querySelectorAll('.dim-expand.open').forEach(d=>d.classList.remove('open')); });
+document.addEventListener('click', (e)=>{
+  if(!e.target.closest('.score-dim-wrap')) {
+    document.querySelectorAll('.dim-expand.open').forEach(d=>d.classList.remove('open'));
+  }
+});
 
 function renderTable(filtered){
   const container=document.getElementById('tableContainer');
