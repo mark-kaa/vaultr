@@ -460,17 +460,32 @@ tbody tr:hover .btn-watch{opacity:.7}
 /* Header */
 .module-header{
   display:flex;align-items:center;gap:.5rem;
-  padding:.5rem .8rem;
+  padding:.55rem .85rem;
   background:var(--surface2);
   border-bottom:1px solid var(--border);
   cursor:grab;user-select:none;
   border-radius:var(--radius) var(--radius) 0 0;
+  transition:background var(--trans);
 }
-.module-header:active{cursor:grabbing}
-.module-drag-handle{color:var(--faint);font-size:.85rem;flex-shrink:0;opacity:.6}
+.module-header:hover{background:color-mix(in srgb,var(--primary) 8%,var(--surface2))}
+.module-header:active{cursor:grabbing;background:color-mix(in srgb,var(--primary) 14%,var(--surface2))}
+.module-drag-handle{color:var(--muted);font-size:.9rem;flex-shrink:0;opacity:.5;letter-spacing:-.5px}
+.module-header:hover .module-drag-handle{opacity:1}
 .module-title{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex:1}
-.module-toggle{width:1.5rem;height:1.5rem;display:flex;align-items:center;justify-content:center;border-radius:var(--radius-xs);color:var(--muted);transition:all var(--trans);flex-shrink:0;font-size:.8rem}
-.module-toggle:hover{background:var(--surface3);color:var(--text)}
+.module-toggle{
+  width:2rem;height:2rem;
+  display:flex;align-items:center;justify-content:center;
+  border-radius:.35rem;
+  color:var(--muted);
+  transition:all var(--trans);
+  flex-shrink:0;
+  font-size:1rem;
+  background:var(--surface);
+  border:1px solid var(--border);
+  cursor:pointer;
+  -webkit-tap-highlight-color:rgba(0,0,0,0);
+}
+.module-toggle:hover,.module-toggle:active{background:var(--primary);color:#000;border-color:var(--primary)}
 /* Body */
 .module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0}
 .module-body.collapsed{display:none}
@@ -2655,7 +2670,15 @@ function buildPromptSplit(item){
   const recOpts = isGraded?'"Sælg"|"Behold graderet"':isSealed?'"Sælg"|"Behold sealed"':'"Sælg"|"Behold råt"|"Send til grading"';
   const itemType = isGraded?('Graded '+item.grade):isSealed?'Sealed':('Raw '+(item.condition||'?'));
   const systemPrompt = 'You are a Pokémon TCG investment analyst. '+langNote+' Reply with ONLY valid JSON — no markdown, no extra text. PSA grading: NEVER invent % probabilities — use qualitative descriptions only (NM="strong PSA 9/10 candidate", LP="PSA 8-9 likely", MP="PSA 7-8 range").';
-  const finStr = 'Cost '+(cost>0?cost.toFixed(0)+' DKK':'?')+' | Market '+(mkt>0?mkt.toFixed(0)+' DKK':'?')+' | P/L '+(cost>0?pl.toFixed(0)+' DKK ('+fmtP(pct)+')':'?')+(liveStr?' | '+liveStr:'')+' | Qty: '+item.quantity;
+  const lc2 = liveCache[item.id];
+  const cm2 = lc2?.tcgdex?.cm;
+  let trendCtx = '';
+  if(cm2){
+    const avg1 = cm2.averageSellPrice||cm2.avg1, avg7 = cm2.avg7, avg30 = cm2.avg30;
+    if(avg1 && avg7){ const d7 = ((avg1-avg7)/avg7*100); trendCtx = ' | CM 7d trend: '+(d7>=0?'+':'')+d7.toFixed(1)+'%'; }
+    if(avg7 && avg30){ const d30 = ((avg7-avg30)/avg30*100); trendCtx += ' | CM 30d: '+(d30>=0?'+':'')+d30.toFixed(1)+'%'; }
+  }
+  const finStr = 'Cost '+(cost>0?cost.toFixed(0)+' DKK':'?')+' | Market '+(mkt>0?mkt.toFixed(0)+' DKK':'?')+' | P/L '+(cost>0?pl.toFixed(0)+' DKK ('+fmtP(pct)+')':'?')+(liveStr?' | '+liveStr:'')+trendCtx+' | Qty: '+item.quantity;
   const itemStr = item.productName+(item.cardNumber?' #'+item.cardNumber:'')+' | Set: '+item.set+(item.rarity?' | '+item.rarity:'')+(item.variance?' | '+item.variance:'')+' | Type: '+itemType;
   const jsonSchema = '{"recommendation":'+recOpts+',"overall_score":<1-10>,"dimensions":{"price_trend":<1-10>,"demand":<1-10>,"roi_potential":<1-10>},"dimension_reasoning":{"price_trend_reasoning":"<1 sentence>","demand_reasoning":"<1 sentence>","roi_reasoning":"<1 sentence>"},"reasoning":"<2 sentences>","key_factor":"<max 8 words>"}';
   const userPrompt = 'Analyze for investment. Reply ONLY with this JSON:\n'+jsonSchema+'\n\nITEM: '+itemStr+'\nFINANCIALS: '+finStr;
@@ -2912,7 +2935,55 @@ function initDragDrop() {
   const container = document.getElementById('dashModules') || document.getElementById('dashboardPanel');
   let dragSrc = null;
 
+  // Touch drag support (Safari/iPad)
+  let touchDragSrc = null, touchPlaceholder = null;
+  function initTouchDrag(module){
+    const header = module.querySelector('.module-header');
+    if(!header) return;
+    let startY, startX, origY, lastOver;
+    header.addEventListener('touchstart', e => {
+      if(e.touches.length !== 1) return;
+      touchDragSrc = module;
+      const t = e.touches[0];
+      startX = t.clientX; startY = t.clientY;
+      const rect = module.getBoundingClientRect();
+      origY = rect.top;
+      module.style.opacity = '0.4';
+      module.style.transition = 'none';
+    }, {passive: true});
+    header.addEventListener('touchmove', e => {
+      if(!touchDragSrc || touchDragSrc !== module) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const over = document.elementFromPoint(t.clientX, t.clientY);
+      const overModule = over?.closest('.dash-module');
+      if(overModule && overModule !== module){
+        if(lastOver && lastOver !== overModule) lastOver.classList.remove('drag-over');
+        overModule.classList.add('drag-over');
+        lastOver = overModule;
+      }
+    }, {passive: false});
+    header.addEventListener('touchend', e => {
+      if(!touchDragSrc || touchDragSrc !== module) return;
+      module.style.opacity = '';
+      module.style.transition = '';
+      if(lastOver){ lastOver.classList.remove('drag-over'); }
+      const t = e.changedTouches[0];
+      const over = document.elementFromPoint(t.clientX, t.clientY);
+      const target = over?.closest('.dash-module');
+      if(target && target !== module){
+        const allMods = [...container.querySelectorAll(':scope > .dash-module')];
+        const si = allMods.indexOf(module), ti = allMods.indexOf(target);
+        if(si < ti) container.insertBefore(module, target.nextSibling);
+        else container.insertBefore(module, target);
+        saveDashLayout();
+      }
+      touchDragSrc = null; lastOver = null;
+    });
+  }
+
   container.querySelectorAll('.dash-module').forEach(module => {
+    initTouchDrag(module);
     // Drag startes fra module-header (grab handle)
     module.addEventListener('dragstart', e => {
       dragSrc = module;
@@ -3805,16 +3876,36 @@ function renderGradedGrid(item) {
     return '<div style="font-size:.75rem;color:var(--muted)">Ingen markedspris tilgængelig — kan ikke estimere grade-priser.</div>';
   }
 
-  // Hvis kortet ALLEREDE er graderet — graderingspriserne giver ikke mening
+  // Hvis kortet ALLEREDE er graderet — vis markedspris for denne specifikke grade
   const isAlreadyGraded = item.grade && item.grade !== 'Ungraded' && item.gradingProvider;
   if (isAlreadyGraded) {
     const lc = liveCache[item.id];
-    const cmPrice = lc ? (lc.lowestNM || lc.trendPrice || 0) : 0;
-    const cmStr = cmPrice > 0 ? fmtDKK(cmPrice) : '—';
-    return `<div style="padding:.5rem 0">
-      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.5rem">Aktuel markedsværdi</div>
-      <div style="font-size:.85rem;color:var(--text)">Dette kort er allerede graderet (${esc(item.grade)}). Graderingsestimater vises kun for <strong>råkort</strong> der endnu ikke er sendt til grading.</div>
-      ${cmPrice > 0 ? `<div style="margin-top:.6rem;font-size:.82rem;color:var(--muted)">Live Cardmarket NM-pris: <span style="color:var(--gold);font-weight:700">${cmStr}</span></div>` : ''}
+    const eb = lc?.ebay;
+    const cmPrice = lc ? (lc.tcgdex?.cm?.averageSellPrice || lc.tcgdex?.cm?.trendPrice || 0) : 0;
+    const ebayMedian = eb?.medianDKK || 0;
+    const ebayMin = eb?.minDKK || 0;
+    const ebayMax = eb?.maxDKK || 0;
+    const gradeLabel = esc(item.grade);
+    return `<div style="padding:.4rem 0">
+      <div style="font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:.6rem">Aktuel markedsværdi — ${gradeLabel}</div>
+      ${ebayMedian > 0 ? `
+      <div style="display:flex;gap:.5rem;margin-bottom:.5rem">
+        <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.35rem .5rem;text-align:center">
+          <div style="font-size:.6rem;color:var(--muted)">eBay Median</div>
+          <div style="font-size:.95rem;font-weight:800;color:var(--gold)">${fmtDKK(ebayMedian)}</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.35rem .5rem;text-align:center">
+          <div style="font-size:.6rem;color:var(--muted)">Min</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--text)">${fmtDKK(ebayMin)}</div>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:.35rem;padding:.35rem .5rem;text-align:center">
+          <div style="font-size:.6rem;color:var(--muted)">Max</div>
+          <div style="font-size:.82rem;font-weight:700;color:var(--text)">${fmtDKK(ebayMax)}</div>
+        </div>
+      </div>
+      <div style="font-size:.65rem;color:var(--faint)">Baseret på ${eb.count} aktive eBay-listings · ${esc(eb.query||'')}</div>
+      ` : `<div style="font-size:.82rem;color:var(--muted)">Hent live priser (RAW tab) for at se markedspris for ${gradeLabel}</div>`}
+      ${cmPrice > 0 ? `<div style="margin-top:.5rem;font-size:.75rem;color:var(--muted)">CM NM-pris: <span style="color:var(--teal);font-weight:700">€${cmPrice.toFixed(2)}</span></div>` : ''}
     </div>`;
   }
 
@@ -3824,6 +3915,13 @@ function renderGradedGrid(item) {
   const ownedScore = item.gradeScore ? parseFloat(item.gradeScore) : null;
   const ownedProvider = (item.gradingProvider || '').toUpperCase();
 
+  // Udbyder-tabs: PSA / BGS / CGC med egne multipliers
+  // BGS 9.5 = ca. PSA 10, BGS 10 Black Label = 2x PSA 10
+  const providerMults = {
+    'PSA': { 10: mults.psa10, 9: mults.psa9, 8: mults.psa8, 7: mults.psa8?mults.psa8*.65:null, 6: mults.psa8?mults.psa8*.45:null },
+    'BGS': { '10 BL': mults.psa10?mults.psa10*2:null, '9.5': mults.psa10?mults.psa10*.9:null, '9': mults.psa9?mults.psa9*.85:null, '8.5': mults.psa8?mults.psa8*1.1:null },
+    'CGC': { 10: mults.psa10?mults.psa10*.85:null, 9.5: mults.psa10?mults.psa10*.75:null, 9: mults.psa9?mults.psa9*.8:null, 8: mults.psa8?mults.psa8*.9:null },
+  };
   const grades = [
     { num: '10',  mult: mults.psa10, label: 'GEM-MT',   cls: 'psa10' },
     { num: '9',   mult: mults.psa9,  label: 'MINT',     cls: 'psa9'  },
@@ -3850,11 +3948,56 @@ function renderGradedGrid(item) {
     ? `<div style="font-size:.65rem;color:var(--faint);margin-top:.4rem">* Stand ukendt — bruger Mint-multiplier som standard</div>`
     : '';
 
+  // BGS rækker
+  const bgsGrades = [
+    {num:'10 BL', mult:providerMults.BGS['10 BL'], label:'Black Label', cls:'psa10'},
+    {num:'9.5',   mult:providerMults.BGS['9.5'],   label:'Gem Mint',    cls:'psa10'},
+    {num:'9',     mult:providerMults.BGS['9'],     label:'Mint',        cls:'psa9'},
+    {num:'8.5',   mult:providerMults.BGS['8.5'],   label:'NM-MT+',      cls:'psa8'},
+  ];
+  const bgsCells = bgsGrades.map(g => {
+    const p = g.mult ? `<div class="ggc-price">${fmtDKK(basePrice * g.mult)}</div>` : '<div class="ggc-price" style="color:var(--faint)">N/A</div>';
+    return `<div class="graded-grade-cell"><div class="ggc-grade">${g.num}</div>${p}<div class="ggc-label">${g.label}</div></div>`;
+  }).join('');
+
+  // CGC rækker
+  const cgcGrades = [
+    {num:'10',  mult:providerMults.CGC[10],  label:'Pristine', cls:'psa10'},
+    {num:'9.5', mult:providerMults.CGC[9.5], label:'Mint+',    cls:'psa9'},
+    {num:'9',   mult:providerMults.CGC[9],   label:'Mint',     cls:'psa9'},
+    {num:'8',   mult:providerMults.CGC[8],   label:'NM/M',     cls:'psa8'},
+  ];
+  const cgcCells = cgcGrades.map(g => {
+    const p = g.mult ? `<div class="ggc-price">${fmtDKK(basePrice * g.mult)}</div>` : '<div class="ggc-price" style="color:var(--faint)">N/A</div>';
+    return `<div class="graded-grade-cell"><div class="ggc-grade">${g.num}</div>${p}<div class="ggc-label">${g.label}</div></div>`;
+  }).join('');
+
+  const tabStyle = (id) => `style="padding:.25rem .6rem;border-radius:.3rem;font-size:.68rem;font-weight:700;cursor:pointer;border:1px solid var(--border);background:none;color:var(--muted);-webkit-tap-highlight-color:rgba(0,0,0,0)"`;
   return `
     <div style="margin-bottom:.4rem;font-size:.72rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.04em">Forventet salgspris efter grading (estimat)</div>
-    <div class="graded-grid">${cells}</div>
-    <div style="font-size:.62rem;color:var(--faint);margin-top:.5rem">Hvad du kan forvente at sælge for efter grading · Baseret på markedspris × historiske PSA-multiplikatorer (${esc(item.condition || 'Mint')} stand)</div>
+    <div style="display:flex;gap:.35rem;margin-bottom:.5rem">
+      <button ${tabStyle('psa')} id="gtab-psa-${item.id}" onclick="switchGradeTab('${item.id}','psa')" style="background:var(--primary);color:#000;border-color:var(--primary)">PSA</button>
+      <button ${tabStyle('bgs')} id="gtab-bgs-${item.id}" onclick="switchGradeTab('${item.id}','bgs')">BGS</button>
+      <button ${tabStyle('cgc')} id="gtab-cgc-${item.id}" onclick="switchGradeTab('${item.id}','cgc')">CGC</button>
+    </div>
+    <div id="graded-grid-psa-${item.id}" class="graded-grid">${cells}</div>
+    <div id="graded-grid-bgs-${item.id}" class="graded-grid" style="display:none">${bgsCells}</div>
+    <div id="graded-grid-cgc-${item.id}" class="graded-grid" style="display:none">${cgcCells}</div>
+    <div style="font-size:.62rem;color:var(--faint);margin-top:.5rem">Hvad du kan forvente at sælge for efter grading · Baseret på markedspris × historiske multipliers (${esc(item.condition || 'Mint')} stand)</div>
     ${note}`;
+}
+
+function switchGradeTab(itemId, provider){
+  ['psa','bgs','cgc'].forEach(p => {
+    const grid = document.getElementById('graded-grid-'+p+'-'+itemId);
+    const btn = document.getElementById('gtab-'+p+'-'+itemId);
+    if(grid) grid.style.display = p === provider ? '' : 'none';
+    if(btn){
+      btn.style.background = p === provider ? 'var(--primary)' : 'none';
+      btn.style.color = p === provider ? '#000' : 'var(--muted)';
+      btn.style.borderColor = p === provider ? 'var(--primary)' : 'var(--border)';
+    }
+  });
 }
 
 function renderPOPPanel(item) {
