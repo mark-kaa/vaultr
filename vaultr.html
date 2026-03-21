@@ -639,12 +639,12 @@ tbody tr:hover .btn-watch{opacity:.7}
       <option value="pt">🇵🇹 PT</option>
       <option value="it">🇮🇹 IT</option>
     </select>
-    <div id="userChipWrap" style="display:none">
-      <div class="user-chip" onclick="showUserMenu()" title="Din konto">
+    <div id="userChipWrap" style="display:none;display:flex;align-items:center;gap:.4rem">
+      <div class="user-chip" style="cursor:default">
         <div class="user-dot"></div>
-        <span id="userEmail" style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        <span id="userEmail" style="max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
       </div>
+      <button onclick="supa.auth.signOut()" title="Log ud" style="padding:.25rem .5rem;border-radius:.35rem;border:1px solid var(--border);background:none;color:var(--muted);font-size:.72rem;cursor:pointer;white-space:nowrap" onmouseover="this.style.color='var(--red)';this.style.borderColor='var(--red)'" onmouseout="this.style.color='var(--muted)';this.style.borderColor='var(--border)'">Log ud</button>
     </div>
     <div id="syncStatus" class="sync-indicator" style="display:none">
       <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-8.49"/></svg>
