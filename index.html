@@ -859,33 +859,42 @@ function showSync(state, txt) {
 async function loadFromSupabase() {
   if(!supaUser) return;
   showSync('syncing','Henter data...');
+  const PROXY = 'https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data';
+  const uid = supaUser.id;
+  async function proxyLoad(tbl) {
+    try {
+      const r = await fetch(PROXY, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: uid, action:'load', table: tbl })
+      });
+      if(!r.ok) { console.warn('Proxy load fejl', tbl, r.status); return null; }
+      return await r.json();
+    } catch(e) { console.warn('Proxy fetch fejl', tbl, e); return null; }
+  }
   try {
     const [g, s, r, ai] = await Promise.all([
-      supa.from('graded_items').select('id,data').eq('user_id', supaUser.id),
-      supa.from('sealed_items').select('id,data').eq('user_id', supaUser.id),
-      supa.from('raw_items').select('id,data').eq('user_id', supaUser.id),
-      supa.from('ai_cache').select('item_id,data').eq('user_id', supaUser.id),
+      proxyLoad('graded_items'),
+      proxyLoad('sealed_items'),
+      proxyLoad('raw_items'),
+      proxyLoad('ai_cache'),
     ]);
-    if(!g.error) { gradedData = g.data.map(r=>r.data); localStorage.setItem('pf_graded', JSON.stringify(gradedData)); }
-    if(!s.error) { sealedData = s.data.map(r=>r.data); localStorage.setItem('pf_sealed', JSON.stringify(sealedData)); }
-    if(!r.error) { rawData    = r.data.map(r=>r.data); localStorage.setItem('pf_raw',    JSON.stringify(rawData)); }
-    if(!ai.error) {
+    if(g && Array.isArray(g)) { gradedData = g.map(row=>row.data); localStorage.setItem('pf_graded', JSON.stringify(gradedData)); }
+    if(s && Array.isArray(s)) { sealedData = s.map(row=>row.data); localStorage.setItem('pf_sealed', JSON.stringify(sealedData)); }
+    if(r && Array.isArray(r)) { rawData    = r.map(row=>row.data); localStorage.setItem('pf_raw',    JSON.stringify(rawData)); }
+    if(ai && Array.isArray(ai)) {
       aiCache = {};
-      ai.data.forEach(r => aiCache[r.item_id] = r.data);
+      ai.forEach(row => { if(row.item_id) aiCache[row.item_id] = row.data; });
+      localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
     }
-    // Gem lokalt som fallback
-    localStorage.setItem('pf_graded',   JSON.stringify(gradedData));
-    localStorage.setItem('pf_sealed',   JSON.stringify(sealedData));
-    localStorage.setItem('pf_raw',      JSON.stringify(rawData));
-    localStorage.setItem('pf_ai_cache', JSON.stringify(aiCache));
     showSync(false);
     const total = gradedData.length + sealedData.length + rawData.length;
     if(total > 0) showToast('\u2705 ' + total + ' poster hentet fra cloud');
-    render(); // ALTID render efter cloud-load, også ved tom database
+    render();
   } catch(e) {
     console.error('Supabase load fejl:', e);
     showSync('error','Sync fejl');
-    render(); // render alligevel så UI ikke hænger
+    render();
   }
 }
 
@@ -1166,11 +1175,16 @@ async function saveUserSettingsToSupabase(){
 }
 
 async function loadUserSettingsFromSupabase(){
-  if(!supaUser||!supa) return;
+  if(!supaUser) return;
   try{
-    const { data, error } = await supa.from('user_settings').select('settings').eq('user_id', supaUser.id).single();
-    if(error || !data) return;
-    const s = data.settings || {};
+    const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'load', table:'user_settings' })
+    });
+    if(!r.ok) return;
+    const rows = await r.json();
+    if(!Array.isArray(rows) || !rows.length) return;
+    const s = rows[0].settings || {};
     if(s.pplx_key)    { localStorage.setItem('pf_api_key',     s.pplx_key);    apiKey = s.pplx_key; }
     if(s.cm_key)      { localStorage.setItem('pf_cmapi_key',   s.cm_key); }
     if(s.psa_key)     { localStorage.setItem('pf_psa_key',     s.psa_key); }
@@ -1178,10 +1192,9 @@ async function loadUserSettingsFromSupabase(){
     if(s.ebay_secret) { localStorage.setItem('pf_ebay_secret', s.ebay_secret); }
     if(s.lang)        { localStorage.setItem('pf_lang',        s.lang);   currentLang = s.lang; }
     if(s.dash_layout) { localStorage.setItem('pf_dash_layout', s.dash_layout); dashLayout = JSON.parse(s.dash_layout); }
-    // Opdater UI
     initApiKey(); initCMApiKey(); initPSAApiKey(); initEbayApiKey();
     applyLang();
-    console.log('✅ Indstillinger hentet fra cloud');
+    console.log('✅ Indstillinger hentet fra cloud (proxy)');
   } catch(e){ console.warn('Settings load fejl:', e); }
 }
 
@@ -4817,12 +4830,15 @@ async function syncWatchlistToSupabase(){
 }
 
 async function loadWatchlistFromSupabase(){
-  if(!supaUser||!supa) return;
+  if(!supaUser) return;
   try{
-    const { data, error } = await supa.from('watchlist_items').select('id,data').eq('user_id', supaUser.id);
-    if(error){ console.warn('Watchlist load fejl:', error.message); return; }
-    if(data && data.length){
-      // Flet Supabase-data med localStorage (Supabase vinder)
+    const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'load', table:'watchlist_items' })
+    });
+    if(!r.ok) return;
+    const data = await r.json();
+    if(data && Array.isArray(data) && data.length){
       data.forEach(row => {
         const existing = watchlistData.findIndex(w => w.id === row.id);
         if(existing >= 0) watchlistData[existing] = row.data;
