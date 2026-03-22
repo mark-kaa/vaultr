@@ -1766,7 +1766,7 @@ function renderMarketMovers(){
     const sign = dir === 'up' ? '+' : '';
     return `<div class="mover-item ${dir}">
       <span style="font-size:.85rem">${dir==='up'?'📈':'📉'}</span>
-      <span class="mover-name" title="${esc(e.name)}">${esc(e.name.substring(0,22))}</span>
+      <span class="mover-name" title="${esc(e.name)}">${esc((e.name||'').substring(0,22))}</span>
       <span class="mover-price">€${Number(e.cur).toFixed(2)}</span>
       <span class="mover-chg ${dir}">${arrow} ${sign}${e.chgPct.toFixed(1)}%</span>
     </div>`;
@@ -2240,7 +2240,7 @@ function renderPerGameModule(){
         </div>
       </td>
       <td>${typeBar}</td>
-      <td style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topItem?esc(topItem.productName):''}">${topItem?esc(topItem.productName.substring(0,22)):'—'}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${topItem?esc(topItem.productName):''}">${topItem?esc((topItem.productName||'').substring(0,22)):'—'}</td>
       <td class="num">${avgAI ? `<span class="score-badge score-${scoreColor(Math.round(avgAI))}" style="cursor:default">${avgAI.toFixed(1)}</span>` : '<span style="color:var(--faint)">—</span>'}</td>
     </tr>`;
   }).join('');
@@ -2848,7 +2848,7 @@ async function analyseItem(item){
     const stripped = content.replace(/```json?\s*/gi,'').replace(/```/g,'').trim();
     const jsonMatch = stripped.match(/\{[\s\S]*\}/);
     if(!jsonMatch){
-      console.error('Intet JSON i svar:', content.substring(0,300));
+      console.error('Intet JSON i svar:', (content||'').substring(0,300));
       throw new Error('AI returnerede ikke gyldigt JSON');
     }
     const parsed = JSON.parse(jsonMatch[0]);
@@ -2891,7 +2891,7 @@ async function runSingleAnalysis(itemId){
     }
   } catch(e){
     const msg = e.message || 'Ukendt fejl';
-    showToast('❌ API-fejl: '+msg.substring(0,80));
+    showToast('❌ API-fejl: '+(msg||'').substring(0,80));
     if(btn){ btn.disabled=false; btn.innerHTML='🤖 Analysér'; }
   }
 }
@@ -3420,7 +3420,7 @@ Be concise. Focus on actionable investor intelligence, not collecting advice.`;
 
   } catch(e) {
     const msg = e.message || 'Ukendt fejl';
-    showToast('❌ Spike-analyse fejl: ' + msg.substring(0, 80));
+    showToast('❌ Spike-analyse fejl: ' + (msg||'').substring(0, 80));
     if (resultDiv) { resultDiv.innerHTML = '<span style="color:var(--red)">Fejl: ' + escapeHtml(msg) + '</span>'; }
     if (btn) { btn.disabled = false; btn.innerHTML = '🔍 Analysér aktuelle spikes (AI)'; }
   }
@@ -3989,7 +3989,7 @@ function renderAICell(item){
     : _nl.includes('(fr)') ? 'FR'
     : _nl.includes('(kr)')||_nl.includes('(ko)') ? 'KR'
     : _nl.includes('(zh)')||_nl.includes('(cn)') ? 'CN'
-    : (item.language && item.language.toLowerCase()!=='english' && item.language!=='') ? item.language.substring(0,2).toUpperCase()
+    : (item.language && item.language.toLowerCase()!=='english' && item.language!=='') ? (item.language||'').substring(0,2).toUpperCase()
     : null;
   const _langHtml = (_langTag && _langTag!=='EN') ? `<span class="lang-pill">${_langTag}</span>` : '';
   // Cache-alder indikator
