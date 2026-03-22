@@ -5284,22 +5284,41 @@ initEbayApiKey();
       document.getElementById('userChipWrap').style.display = '';
       document.getElementById('userEmail').textContent = supaUser.email;
       document.getElementById('authOverlay').classList.add('hidden');
+      // Hent ALT data FØR UI vises — ellers vises tom tilstand
       await loadUserSettingsFromSupabase();
       await loadFromSupabase();
       await loadPriceHistoryFromSupabase();
       await loadWatchlistFromSupabase();
+      // Restore language
+      const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
+      applyLang();
+      switchTab('overview');
+      // Skjul loading screen — data er klar
+      const _loader = document.getElementById('appLoader');
+      if(_loader) _loader.style.display = 'none';
       render();
-      console.log('✅ Session gendannet:', supaUser.email);
+      console.log('✅ Session gendannet og data loadet:', supaUser.email,
+        '| graded:', gradedData.length, '| sealed:', sealedData.length,
+        '| raw:', rawData.length, '| watchlist:', watchlistData.length);
+    } else {
+      // Ingen aktiv session — vis UI uden data (ikke-logget ind tilstand)
+      const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
+      applyLang();
+      switchTab('overview');
+      const _loader = document.getElementById('appLoader');
+      if(_loader) _loader.style.display = 'none';
+      console.log('ℹ️ Ingen session — viser login-skærm');
     }
-  } catch(e){ console.warn('Session restore fejl:', e); }
+  } catch(e){
+    console.warn('Session restore fejl:', e);
+    // Fallback: vis UI alligevel så appen ikke sidder fast
+    const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
+    applyLang();
+    switchTab('overview');
+    const _loader = document.getElementById('appLoader');
+    if(_loader) _loader.style.display = 'none';
+  }
 })();
-// Restore language
-const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
-applyLang();
-switchTab('overview');
-// Skjul loading screen
-const _loader = document.getElementById('appLoader');
-if(_loader) _loader.style.display = 'none';
 // Service worker — omgår GitHub Pages cache
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('/pokemon-samling/sw.js').catch(()=>{});
