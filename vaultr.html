@@ -5313,6 +5313,25 @@ initApiKey();
 initCMApiKey();
 initPSAApiKey();
 initEbayApiKey();
+
+// ── Gendan eksisterende Supabase session ved side-genindlæsning ──
+(async function restoreSession(){
+  try{
+    const { data: { session } } = await supa.auth.getSession();
+    if(session?.user && !supaUser){
+      supaUser = session.user;
+      document.getElementById('userChipWrap').style.display = '';
+      document.getElementById('userEmail').textContent = supaUser.email;
+      document.getElementById('authOverlay').classList.add('hidden');
+      await loadUserSettingsFromSupabase();
+      await loadFromSupabase();
+      await loadPriceHistoryFromSupabase();
+      await loadWatchlistFromSupabase();
+      render();
+      console.log('✅ Session gendannet:', supaUser.email);
+    }
+  } catch(e){ console.warn('Session restore fejl:', e); }
+})();
 // Restore language
 const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
 applyLang();
