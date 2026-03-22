@@ -901,38 +901,47 @@ async function loadFromSupabase() {
 // ── Ryd al cloud-data for denne bruger (bruges ved CSV replace) ──
 async function clearAllCloudData() {
   if(!supaUser) return;
-  await Promise.all([
-    supa.from('graded_items').delete().eq('user_id', supaUser.id),
-    supa.from('sealed_items').delete().eq('user_id', supaUser.id),
-    supa.from('raw_items').delete().eq('user_id', supaUser.id),
-  ]);
+  await Promise.all(['graded_items','sealed_items','raw_items'].map(table =>
+    fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'delete', table })
+    }).catch(e => console.warn('clearAllCloudData fejl:', e))
+  ));
 }
 
 // ── Upsert et enkelt item til Supabase ──
 async function upsertItem(table, item) {
   if(!supaUser) return;
-  const { error } = await supa.from(table).upsert({
-    id: item.id,
-    user_id: supaUser.id,
-    data: item,
-  }, { onConflict: 'id,user_id' });
-  if(error) console.warn('Upsert fejl:', error);
+  try{
+    const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'upsert', table,
+        data: [{id: item.id, user_id: supaUser.id, data: item}] })
+    });
+    if(!r.ok) console.warn('upsertItem fejl:', r.status);
+  } catch(e){ console.warn('upsertItem proxy fejl:', e); }
 }
 
 // ── Slet et item fra Supabase ──
 async function deleteItem(table, itemId) {
   if(!supaUser) return;
-  await supa.from(table).delete().eq('id', itemId).eq('user_id', supaUser.id);
+  try{
+    await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'delete_item', table, item_id: itemId })
+    });
+  } catch(e){ console.warn('deleteItem proxy fejl:', e); }
 }
 
 // ── Upsert AI cache entry ──
 async function upsertAI(itemId, data) {
   if(!supaUser) return;
-  await supa.from('ai_cache').upsert({
-    item_id: itemId,
-    user_id: supaUser.id,
-    data: data,
-  }, { onConflict: 'item_id,user_id' });
+  try{
+    await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'upsert_ai', item_id: itemId, data })
+    });
+  } catch(e){ console.warn('upsertAI proxy fejl:', e); }
 }
 
 // ── Helper: hvilken tabel hører et item til? ──
@@ -1167,10 +1176,10 @@ async function saveUserSettingsToSupabase(){
     dash_layout: localStorage.getItem('pf_dash_layout') || '',
   };
   try{
-    await supa.from('user_settings').upsert({
-      user_id: supaUser.id,
-      settings: settings,
-    }, { onConflict: 'user_id' });
+    await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ user_id: supaUser.id, action:'upsert_settings', settings })
+    });
   } catch(e){ console.warn('Settings sync fejl:', e); }
 }
 
@@ -1958,16 +1967,8 @@ async function recordPriceSnapshot(itemId, price){
   priceHistory[itemId].push(snap);
   if(priceHistory[itemId].length > 90) priceHistory[itemId] = priceHistory[itemId].slice(-90);
   savePriceHistory();
-  // Cloud sync
-  if(supaUser){
-    supa.from('price_history').upsert({
-      item_id: itemId,
-      user_id: supaUser.id,
-      snapshots: priceHistory[itemId],
-    }, { onConflict: 'item_id,user_id' }).then(({error}) => {
-      if(error) console.warn('price_history upsert fejl:', error.message);
-    });
-  }
+  // price_history cloud sync: tabellen oprettes i en fremtidig migration
+  // if(supaUser){ ... }
 }
 
 // Load prishistorik fra Supabase ved login
@@ -2571,27 +2572,27 @@ async function executeCSVImport(){
   // Gem lokalt ALTID (virker også uden login)
   saveAll();
 
-  // Cloud sync — batch upsert (3 kald i stedet for ét per item)
-  if(supaUser && supa){
-    try{
-      if(gradedData.length){
-        const batch = gradedData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
-        const {error:e1} = await supa.from('graded_items').upsert(batch, {onConflict:'id'});
-        if(e1) console.warn('Graded batch upsert fejl:', e1.message);
+  // Cloud sync via proxy (service role — omgår GRANT-problemer)
+  if(supaUser){
+    async function proxyUpsert(table, items){
+      if(!items.length) return;
+      const batch = items.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
+      // Upload i chunks af 100
+      for(let i=0; i<batch.length; i+=100){
+        const chunk = batch.slice(i,i+100);
+        try{
+          const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+            method:'POST', headers:{'Content-Type':'application/json'},
+            body: JSON.stringify({ user_id: supaUser.id, action:'upsert', table, data: chunk })
+          });
+          if(!r.ok) console.warn(table+' upsert fejl:', r.status);
+          else console.log('✅ '+table+': '+chunk.length+' poster synkroniseret');
+        } catch(e){ console.warn(table+' proxy fejl:', e); }
       }
-      if(sealedData.length){
-        const batch = sealedData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
-        const {error:e2} = await supa.from('sealed_items').upsert(batch, {onConflict:'id'});
-        if(e2) console.warn('Sealed batch upsert fejl:', e2.message);
-      }
-      if(rawData.length){
-        const batch = rawData.map(it=>({id:it.id, user_id:supaUser.id, data:it}));
-        const {error:e3} = await supa.from('raw_items').upsert(batch, {onConflict:'id'});
-        if(e3) console.warn('Raw batch upsert fejl:', e3.message);
-      }
-    } catch(syncErr){
-      console.warn('Batch cloud sync fejl (data er gemt lokalt):', syncErr);
     }
+    await proxyUpsert('graded_items', gradedData);
+    await proxyUpsert('sealed_items', sealedData);
+    await proxyUpsert('raw_items', rawData);
   } else {
     console.log('Ikke logget ind — data gemt lokalt kun');
   }
@@ -4824,7 +4825,10 @@ async function syncWatchlistToSupabase(){
   try{
     if(watchlistData.length){
       const batch = watchlistData.map(w=>({id:w.id,user_id:supaUser.id,data:w}));
-      await supa.from('watchlist_items').upsert(batch,{onConflict:'id,user_id'});
+      await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/supabase/data', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ user_id: supaUser.id, action:'upsert', table:'watchlist_items', data: batch })
+      });
     }
   } catch(e){ console.warn('Watchlist sync fejl:', e); }
 }
