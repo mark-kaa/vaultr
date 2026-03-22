@@ -679,34 +679,7 @@ tbody tr:hover .btn-watch{opacity:.7}
   </div>
 </header>
 
-<!-- API KEY BANNER -->
-<div class="api-banner">
-  <div class="api-banner-inner">
-    <span class="api-key-label">🤖 Perplexity API-nøgle</span>
-    <input type="password" id="apiKeyInput" placeholder="pplx-xxxxxxxxxxxxxxxx" autocomplete="off"/>
-    <button class="btn-save-key" onclick="saveApiKey()">Gem nøgle</button>
-    <span class="key-status" id="keyStatus">Ingen nøgle gemt — analyser er deaktiveret</span>
-    <a href="https://www.perplexity.ai/settings/api" target="_blank" style="font-size:.73rem;color:var(--blue);text-decoration:underline">Hent API-nøgle →</a>
-    <span style="color:var(--border);margin:0 .25rem">|</span>
-    <span style="color:var(--teal);font-weight:700;font-size:.8rem;white-space:nowrap">🟢 CM API</span>
-    <input type="password" id="cmApiKeyInput" placeholder="cardmarket-api.com nøgle (valgfri)" autocomplete="off" style="max-width:220px;border-color:color-mix(in srgb,var(--teal) 35%,var(--border))"/>
-    <button class="btn-save-key" onclick="saveCMApiKey()" style="background:var(--teal)">Gem</button>
-    <span class="key-status" id="cmKeyStatus" style="color:var(--teal)"></span>
-    <a href="https://www.cardmarket-api.com" target="_blank" style="font-size:.73rem;color:var(--teal);text-decoration:underline;white-space:nowrap">DE/FR/ES/IT priser →</a>
-    <span style="color:var(--border);margin:0 .25rem">|</span>
-    <span style="color:#5b9cf6;font-weight:700;font-size:.8rem;white-space:nowrap">🔵 PSA API</span>
-    <input type="password" id="psaApiKeyInput" placeholder="PSA bearer token" autocomplete="off" style="max-width:220px;border-color:color-mix(in srgb,#5b9cf6 35%,var(--border))"/>
-    <button class="btn-save-key" onclick="savePSAApiKey()" style="background:#1a4a8a">Gem</button>
-    <span class="key-status" id="psaKeyStatus" style="color:#5b9cf6"></span>
-    <a href="https://www.psacard.com/publicapi" target="_blank" style="font-size:.73rem;color:#5b9cf6;text-decoration:underline;white-space:nowrap">PSA Public API →</a>
-    <span style="color:var(--border);margin:0 .25rem">|</span>
-    <span style="color:#f0b429;font-weight:700;font-size:.8rem;white-space:nowrap">🟡 eBay API</span>
-    <input type="password" id="ebayIdInput" placeholder="App ID (Client ID)" autocomplete="off" style="max-width:200px;border-color:color-mix(in srgb,#f0b429 35%,var(--border))"/>
-    <input type="password" id="ebaySecretInput" placeholder="Cert ID (Client Secret)" autocomplete="off" style="max-width:200px;border-color:color-mix(in srgb,#f0b429 35%,var(--border))"/>
-    <button class="btn-save-key" onclick="saveEbayApiKey()" style="background:#b8860b">Gem</button>
-    <span class="key-status" id="ebayKeyStatus" style="color:#f0b429"></span>
-  </div>
-</div>
+<!-- API nøgler håndteres server-side via Cloudflare Worker proxy -->
 
 <!-- TABS -->
 <div class="tabs">
@@ -1067,8 +1040,8 @@ async function fetchPSACert(certNumber){
   if(!token || !certNumber) return null;
   const clean = String(certNumber).replace(/\D/g,'').padStart(8,'0');
   try{
-    const r = await fetch(`https://api.psacard.com/publicapi/cert/GetByCertNumber/${clean}`,{
-      headers:{ 'Authorization': `bearer ${token}` }
+    const r = await fetch(`https://vaultr-price-alert.mka-831.workers.dev/proxy/psa/cert/${clean}`,{
+      headers:{}
     });
     if(!r.ok) return null;
     const json = await r.json();
@@ -1229,14 +1202,12 @@ function getEbayKeys(){
 
 async function getEbayToken(){
   if(ebayToken && Date.now() < ebayTokenExpiry - 60000) return ebayToken;
-  const { id, secret } = getEbayKeys();
-  if(!id || !secret) return null;
+  // Nøgler håndteres server-side via proxy
   try{
-    const creds = btoa(id + ':' + secret);
-    const r = await fetch('https://api.ebay.com/identity/v1/oauth2/token', {
+    const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/ebay/token', {
       method: 'POST',
-      headers: { 'Authorization': 'Basic '+creds, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: 'grant_type=client_credentials&scope=https%3A%2F%2Fapi.ebay.com%2Foauth%2Fapi_scope'
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}'
     });
     if(!r.ok) return null;
     const d = await r.json();
@@ -1265,11 +1236,8 @@ async function fetchEbayPrice(item){
       limit: '5',
       filter: 'buyingOptions:{FIXED_PRICE}',
     });
-    const r = await fetch('https://api.ebay.com/buy/browse/v1/item_summary/search?' + params, {
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'X-EBAY-C-MARKETPLACE-ID': 'EBAY_DE',
-      }
+    const r = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/ebay/search?' + params, {
+      headers: {}
     });
     if(!r.ok) return null;
     const d = await r.json();
@@ -1406,16 +1374,10 @@ async function fetchTCGdex(item){
 // ── RapidAPI: CardMarket API TCG — EU land-specifikke priser (gratis tier: 100 req/dag) ──
 function getCMApiKey(){ return localStorage.getItem('pf_cmapi_key') || ''; }
 async function fetchCardmarketAPI(item){
-  const key = getCMApiKey();
-  if(!key) return null;
   const name = encodeURIComponent((item.productName||'').replace(/\s+PSA.*$/i,'').replace(/\s*\(JP\)\s*/i,'').trim());
   try{
-    const res = await fetch(`https://cardmarket-api-tcg.p.rapidapi.com/pokemon/cards/search?search=${name}&sort=relevance`,{
-      headers: {
-        'x-rapidapi-key': key,
-        'x-rapidapi-host': 'cardmarket-api-tcg.p.rapidapi.com',
-        'Content-Type': 'application/json'
-      }
+    const res = await fetch(`https://vaultr-price-alert.mka-831.workers.dev/proxy/cm/search?name=${name}&sort=relevance`,{
+      headers: { 'Content-Type': 'application/json' }
     });
     if(!res.ok) return null;
     const d = await res.json();
@@ -2839,12 +2801,11 @@ function buildPromptSplit(item){
 }
 
 async function analyseItem(item){
-  if(!apiKey) return null;
   try {
     const { systemPrompt, userPrompt } = buildPromptSplit(item);
-    const res = await fetch('https://api.perplexity.ai/chat/completions', {
+    const res = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/perplexity', {
       method: 'POST',
-      headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'sonar',
         messages: [
@@ -2886,7 +2847,7 @@ async function analyseItem(item){
 }
 
 async function runSingleAnalysis(itemId){
-  if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
+  // API-nøgle håndteres server-side
   const data  = activeTab==='graded' ? gradedData : activeTab==='sealed' ? sealedData : rawData;
   const item  = data.find(i=>i.id===itemId);
   if(!item) return;
@@ -2921,7 +2882,7 @@ async function runSingleAnalysis(itemId){
 }
 
 async function runBatchAnalysis(){
-  if(!apiKey){ showToast('❌ Tilføj en Perplexity API-nøgle først'); return; }
+  // API-nøgle håndteres server-side
   if(batchRunning){ showToast('⏳ En analyse kører allerede — vent til den er færdig'); return; }
   batchRunning = true;
   const batchTab = activeTab; // gem hvilken tab der startede analysen
@@ -4820,7 +4781,7 @@ async function runWatchlistAnalysis(itemId){
   const arr = w.sourceTab==='graded'?gradedData:w.sourceTab==='sealed'?sealedData:rawData;
   const item = arr.find(i=>i.id===w.id);
   if(!item){ showToast('❌ Item ikke i portefølje'); return; }
-  if(!apiKey){ showToast('❌ Tilføj Perplexity API-nøgle'); return; }
+
   const btn = document.getElementById('wl-abtn-'+itemId);
   if(btn){ btn.disabled=true; btn.innerHTML='<span class="ai-thinking"><span></span><span></span><span></span></span>'; }
   try{
