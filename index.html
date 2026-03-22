@@ -3389,9 +3389,9 @@ For each notable movement, provide:
 
 Be concise. Focus on actionable investor intelligence, not collecting advice.`;
 
-    const resp = await fetch('https://api.perplexity.ai/chat/completions', {
+    const resp = await fetch('https://vaultr-price-alert.mka-831.workers.dev/proxy/perplexity', {
       method: 'POST',
-      headers: { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'sonar',
         messages: [{ role: 'user', content: prompt }],
