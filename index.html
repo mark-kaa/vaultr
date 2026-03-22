@@ -5275,48 +5275,61 @@ initCMApiKey();
 initPSAApiKey();
 initEbayApiKey();
 
+// ── Hjælpefunktion: skjul loader og vis UI — ALTID kaldt til sidst ──
+function _showUI(){
+  const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
+  applyLang();
+  switchTab('overview');
+  const _loader = document.getElementById('appLoader');
+  if(_loader) _loader.style.display = 'none';
+}
+
 // ── Gendan eksisterende Supabase session ved side-genindlæsning ──
+// TIMEOUT-SIKRING: loader forsvinder ALTID inden for 8 sek — selv ved netværksfejl
+const _loaderTimeout = setTimeout(() => {
+  console.warn('⏱ Session restore timeout — viser UI alligevel');
+  _showUI();
+  render();
+}, 8000);
+
 (async function restoreSession(){
   try{
-    const { data: { session } } = await supa.auth.getSession();
+    // getSession med timeout så den ikke hænger ved netværksfejl
+    const sessionResult = await Promise.race([
+      supa.auth.getSession(),
+      new Promise(r => setTimeout(() => r({ data: { session: null } }), 5000))
+    ]);
+    const session = sessionResult?.data?.session;
     if(session?.user && !supaUser){
       supaUser = session.user;
       document.getElementById('userChipWrap').style.display = '';
       document.getElementById('userEmail').textContent = supaUser.email;
       document.getElementById('authOverlay').classList.add('hidden');
-      // Hent ALT data FØR UI vises — ellers vises tom tilstand
-      await loadUserSettingsFromSupabase();
-      await loadFromSupabase();
-      await loadPriceHistoryFromSupabase();
-      await loadWatchlistFromSupabase();
-      // Restore language
-      const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
-      applyLang();
-      switchTab('overview');
-      // Skjul loading screen — data er klar
-      const _loader = document.getElementById('appLoader');
-      if(_loader) _loader.style.display = 'none';
+      // Hent data med individuelle timeouts så én hængende query ikke blokerer alt
+      const withTimeout = (promise, ms, label) => Promise.race([
+        promise,
+        new Promise(r => setTimeout(() => { console.warn(label+' timeout'); r(null); }, ms))
+      ]);
+      await withTimeout(loadUserSettingsFromSupabase(), 5000, 'loadUserSettings');
+      await withTimeout(loadFromSupabase(), 10000, 'loadFromSupabase');
+      await withTimeout(loadPriceHistoryFromSupabase(), 5000, 'loadPriceHistory');
+      await withTimeout(loadWatchlistFromSupabase(), 5000, 'loadWatchlist');
+      clearTimeout(_loaderTimeout);
+      _showUI();
       render();
-      console.log('✅ Session gendannet og data loadet:', supaUser.email,
+      console.log('✅ Session gendannet:', supaUser.email,
         '| graded:', gradedData.length, '| sealed:', sealedData.length,
         '| raw:', rawData.length, '| watchlist:', watchlistData.length);
     } else {
-      // Ingen aktiv session — vis UI uden data (ikke-logget ind tilstand)
-      const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
-      applyLang();
-      switchTab('overview');
-      const _loader = document.getElementById('appLoader');
-      if(_loader) _loader.style.display = 'none';
+      clearTimeout(_loaderTimeout);
+      _showUI();
       console.log('ℹ️ Ingen session — viser login-skærm');
     }
   } catch(e){
     console.warn('Session restore fejl:', e);
-    // Fallback: vis UI alligevel så appen ikke sidder fast
-    const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
-    applyLang();
-    switchTab('overview');
-    const _loader = document.getElementById('appLoader');
-    if(_loader) _loader.style.display = 'none';
+    clearTimeout(_loaderTimeout);
+    _showUI();
+    render();
   }
 })();
 // Service worker — omgår GitHub Pages cache
