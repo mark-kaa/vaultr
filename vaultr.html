@@ -5285,19 +5285,19 @@ function _showUI(){
 }
 
 // ── Gendan eksisterende Supabase session ved side-genindlæsning ──
-// TIMEOUT-SIKRING: loader forsvinder ALTID inden for 8 sek — selv ved netværksfejl
+// TIMEOUT-SIKRING: loader forsvinder ALTID inden for 6 sek — selv ved netværksfejl
 const _loaderTimeout = setTimeout(() => {
   console.warn('⏱ Session restore timeout — viser UI alligevel');
   _showUI();
   render();
-}, 8000);
+}, 6000);
 
 (async function restoreSession(){
   try{
     // getSession med timeout så den ikke hænger ved netværksfejl
     const sessionResult = await Promise.race([
       supa.auth.getSession(),
-      new Promise(r => setTimeout(() => r({ data: { session: null } }), 5000))
+      new Promise(r => setTimeout(() => r({ data: { session: null } }), 3000))
     ]);
     const session = sessionResult?.data?.session;
     if(session?.user && !supaUser){
@@ -5310,10 +5310,11 @@ const _loaderTimeout = setTimeout(() => {
         promise,
         new Promise(r => setTimeout(() => { console.warn(label+' timeout'); r(null); }, ms))
       ]);
-      await withTimeout(loadUserSettingsFromSupabase(), 5000, 'loadUserSettings');
-      await withTimeout(loadFromSupabase(), 10000, 'loadFromSupabase');
-      await withTimeout(loadPriceHistoryFromSupabase(), 5000, 'loadPriceHistory');
-      await withTimeout(loadWatchlistFromSupabase(), 5000, 'loadWatchlist');
+      await withTimeout(loadUserSettingsFromSupabase(), 3000, 'loadUserSettings');
+      await withTimeout(loadFromSupabase(), 5000, 'loadFromSupabase');
+      // price_history tabellen eksisterer ikke endnu — skip for nu
+      // await withTimeout(loadPriceHistoryFromSupabase(), 3000, 'loadPriceHistory');
+      await withTimeout(loadWatchlistFromSupabase(), 3000, 'loadWatchlist');
       clearTimeout(_loaderTimeout);
       _showUI();
       render();
