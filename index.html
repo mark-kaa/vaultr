@@ -890,11 +890,12 @@ async function loadFromSupabase() {
     showSync(false);
     const total = gradedData.length + sealedData.length + rawData.length;
     if(total > 0) showToast('\u2705 ' + total + ' poster hentet fra cloud');
-    render();
+    // Opdater den aktive tab — renderDashboard hvis overblik, ellers render()
+    if(activeTab === 'overview') renderDashboard(); else render();
   } catch(e) {
     console.error('Supabase load fejl:', e);
     showSync('error','Sync fejl');
-    render();
+    if(activeTab === 'overview') { try{ renderDashboard(); } catch(e2){} } else render();
   }
 }
 
@@ -5338,7 +5339,8 @@ const _loaderTimeout = setTimeout(() => {
       // await withTimeout(loadPriceHistoryFromSupabase(), 3000, 'loadPriceHistory');
       await withTimeout(loadWatchlistFromSupabase(), 3000, 'loadWatchlist');
       clearTimeout(_loaderTimeout);
-      _showUI();
+      _showUI(); // switchTab('overview') → renderDashboard() men data er måske ikke klar
+      renderDashboard(); // Eksplicit render efter data er loadet
       render();
       console.log('✅ Session gendannet:', supaUser.email,
         '| graded:', gradedData.length, '| sealed:', sealedData.length,
