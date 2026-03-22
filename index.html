@@ -1573,7 +1573,7 @@ async function loadLivePricePanel(itemId){
       if(euPanel) euPanel.innerHTML = renderEUPricePanel(item);
     }
   }
-  showToast('✅ Live pris hentet: '+item.productName.substring(0,30));
+  showToast('✅ Live pris hentet: '+(item.productName||'').substring(0,30));
 }
 
 // ── Byg live-pris kontekst til Perplexity prompt ──
@@ -1633,7 +1633,7 @@ function renderDashPriceHistory(){
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
     return `<div style="display:flex;align-items:center;gap:.5rem;padding:.3rem 0;border-bottom:1px solid var(--border)">
-      <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:600">${esc(item.productName.substring(0,28))}</div>
+      <div style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:600">${esc((item.productName||'').substring(0,28))}</div>
       <svg viewBox="0 0 ${sparkW} ${sparkH}" width="${sparkW}" height="${sparkH}" style="flex-shrink:0"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round"/></svg>
       <div style="font-size:.78rem;font-weight:700;color:${color};white-space:nowrap;min-width:45px;text-align:right">${arrow} ${(pct>=0?'+':'')}${pct.toFixed(1)}%</div>
       <div style="font-size:.72rem;color:var(--gold);white-space:nowrap">€${last.toFixed(2)}</div>
@@ -1658,7 +1658,7 @@ function renderLivePricesSummary(){
     const trendTxt = trendPct === null ? '' : (trendPct > 0 ? '+' : '') + trendPct.toFixed(1) + '%';
     const dkk = avg ? Math.round(avg * eurToDkk) : 0;
     return `<div class="live-status-row">
-      <div class="live-status-name" title="${esc(item.productName)}">${esc(item.productName.substring(0,40))}</div>
+      <div class="live-status-name" title="${esc(item.productName)}">${esc((item.productName||'').substring(0,40))}</div>
       <div style="display:flex;align-items:center;gap:.5rem">
         ${avg ? `<span class="live-status-price">€${Number(avg).toFixed(2)}</span><span style="font-size:.65rem;color:var(--muted)">(~${dkk}kr)</span>` : '<span style="color:var(--muted)">ingen pris</span>'}
         ${trendTxt ? `<span class="live-status-change ${trendCls}">${trendTxt}</span>` : ''}
@@ -1788,7 +1788,7 @@ function renderEbayTopListings(){
   const rows = withEbay.map(item => {
     const eb = liveCache[item.id].ebay;
     return `<div style="display:flex;align-items:baseline;gap:.5rem;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.78rem">
-      <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc(item.productName.substring(0,30))}</div>
+      <div style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600">${esc((item.productName||'').substring(0,30))}</div>
       <div style="color:var(--gold);font-weight:700;white-space:nowrap">${fmtDKK(eb.medianDKK)}</div>
       <div style="color:var(--faint);font-size:.65rem;white-space:nowrap">${eb.count} listings</div>
     </div>`;
@@ -1807,7 +1807,7 @@ function renderEbayPriceSection(item){
   const isGraded = item.grade && item.grade !== 'Ungraded';
   const listings = (eb.listings||[]).map(l =>
     `<div style="display:flex;justify-content:space-between;align-items:baseline;padding:.2rem 0;border-bottom:1px solid var(--border);font-size:.75rem">
-      <a href="${esc(l.url)}" target="_blank" style="color:var(--text);text-decoration:none;flex:1;margin-right:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.title)}">${esc((l.title||'').substring(0,52))}${l.title&&l.title.length>52?'…':''}</a>
+      <a href="${esc(l.url)}" target="_blank" style="color:var(--text);text-decoration:none;flex:1;margin-right:.5rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(l.title)}">${esc((l.title||'').substring(0,52))}${l.title&&(l.title||'').length>52?'…':''}</a>
       <span style="color:var(--gold);font-weight:700;white-space:nowrap">${fmtDKK(l.priceDKK)}</span>
     </div>`
   ).join('');
@@ -2083,7 +2083,7 @@ function openTradeAnalyzer(){
     all.forEach(i => {
       const opt = document.createElement('option');
       opt.value = i.id;
-      opt.textContent = i.productName.substring(0,50) + (i.grade?' ['+i.grade+']':'') + ' — ' + fmtDKK(totV(i));
+      opt.textContent = (i.productName||'').substring(0,50) + (i.grade?' ['+i.grade+']':'') + ' — ' + fmtDKK(totV(i));
       sel.appendChild(opt);
     });
   };
@@ -2274,6 +2274,7 @@ let searchQ   = '';
 let sortCol   = 'name';
 let sortAsc   = true;
 let filterCat = 'Alle';
+let filterRec = ''; // AI recommendation filter: '', 'Sælg', 'Behold', 'Send til grading'
 let batchRunning = false;
 let batchTabRef = null; // hvilken tab kører batch-analyse lige nu
 
@@ -2883,7 +2884,7 @@ async function runSingleAnalysis(itemId){
         const wrap = document.querySelector('.eu-panel-wrap.eu-panel-'+itemId);
         if(wrap) wrap.innerHTML = renderEUPricePanel(item);
       }).catch(()=>{});
-      showToast('✅ Analyse færdig: '+item.productName.substring(0,30));
+      showToast('✅ Analyse færdig: '+(item.productName||'').substring(0,30));
     } else {
       showToast('❌ Tomt svar fra API');
       if(btn){ btn.disabled=false; btn.innerHTML='🤖 Analysér'; }
@@ -2929,13 +2930,13 @@ async function runBatchAnalysis(){
   updateProg(`[${tabLabel}] Analyserer <span>0</span>/${toAnalyse.length} poster...`);
 
   for(const item of toAnalyse){
-    updateProg(`[${tabLabel}] Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc(item.productName.substring(0,35))}...`);
+    updateProg(`[${tabLabel}] Analyserer <span>${done+1}</span>/${toAnalyse.length}: ${esc((item.productName||'').substring(0,35))}...`);
     try{
       const result = await analyseItem(item);
       if(result){ aiCache[item.id]=result; saveAll(); upsertAI(item.id, result); }
     } catch(e){
       const msg=(e.message||'fejl').substring(0,60);
-      updateProg(`<span style="color:var(--red)">[${tabLabel}] Fejl på "${esc(item.productName.substring(0,30))}": ${esc(msg)} — fortsætter...</span>`);
+      updateProg(`<span style="color:var(--red)">[${tabLabel}] Fejl på "${esc((item.productName||'').substring(0,30))}": ${esc(msg)} — fortsætter...</span>`);
       await new Promise(r=>setTimeout(r,2000));
     }
     done++;
@@ -3635,14 +3636,14 @@ function renderDashboard(){
           <div class="chart-title">📈 Bedste positioner (P/L %)</div>
           <table class="dash-table">
             <thead><tr><th>Navn</th><th class="num">P/L %</th><th class="num">P/L DKK</th></tr></thead>
-            <tbody>${topGain.map(i=>{const pct=plPct(i),pl=plAbs(i);return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,28))}</td><td class="num green">+${(pct||0).toFixed(1)}%</td><td class="num green">${fmtDKK(pl)}</td></tr>`;}).join('')}</tbody>
+            <tbody>${topGain.map(i=>{const pct=plPct(i),pl=plAbs(i);return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc((i.productName||'').substring(0,28))}</td><td class="num green">+${(pct||0).toFixed(1)}%</td><td class="num green">${fmtDKK(pl)}</td></tr>`;}).join('')}</tbody>
           </table>
         </div>
         <div class="chart-card">
           <div class="chart-title">📉 Svageste positioner (P/L %)</div>
           <table class="dash-table">
             <thead><tr><th>Navn</th><th class="num">P/L %</th><th class="num">P/L DKK</th></tr></thead>
-            <tbody>${topLoss.map(i=>{const pct=plPct(i),pl=plAbs(i);return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,28))}</td><td class="num red">${(pct||0).toFixed(1)}%</td><td class="num red">${fmtDKK(pl)}</td></tr>`;}).join('')}</tbody>
+            <tbody>${topLoss.map(i=>{const pct=plPct(i),pl=plAbs(i);return `<tr><td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc((i.productName||'').substring(0,28))}</td><td class="num red">${(pct||0).toFixed(1)}%</td><td class="num red">${fmtDKK(pl)}</td></tr>`;}).join('')}</tbody>
           </table>
         </div>
       </div>
@@ -3656,7 +3657,7 @@ function renderDashboard(){
     <div class="module-body">
       <table class="dash-table">
         <thead><tr><th>#</th><th>Navn</th><th>Type</th><th class="num">Markedsværdi</th><th class="num">% af portef.</th></tr></thead>
-        <tbody>${top10.map((i,idx)=>{const pct=totalVal>0?(totV(i)/totalVal*100):0;const type=i.portfolioName?.toLowerCase().includes('graded')?'Graderet':i.portfolioName?.toLowerCase().includes('sealed')?'Sealed':'Raw';const barW=Math.max(4,pct/((totalVal>0?(totV(top10[0])/totalVal*100):1))*100);return `<tr><td class="muted" style="font-size:.72rem;font-weight:700">${idx+1}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc(i.productName.substring(0,35))}</td><td><span class="pill pill-cat ${catClass(i.category)}" style="font-size:.65rem">${esc(i.category||'—')}</span></td><td class="num gold">${fmtDKK(totV(i))}</td><td class="num" style="min-width:100px"><div style="display:flex;align-items:center;gap:.4rem;justify-content:flex-end"><div style="width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="width:${barW}%;height:100%;background:var(--primary);border-radius:3px"></div></div><span>${pct.toFixed(1)}%</span></div></td></tr>`;}).join('')}</tbody>
+        <tbody>${top10.map((i,idx)=>{const pct=totalVal>0?(totV(i)/totalVal*100):0;const type=i.portfolioName?.toLowerCase().includes('graded')?'Graderet':i.portfolioName?.toLowerCase().includes('sealed')?'Sealed':'Raw';const barW=Math.max(4,pct/((totalVal>0?(totV(top10[0])/totalVal*100):1))*100);return `<tr><td class="muted" style="font-size:.72rem;font-weight:700">${idx+1}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(i.productName)}">${esc((i.productName||'').substring(0,35))}</td><td><span class="pill pill-cat ${catClass(i.category)}" style="font-size:.65rem">${esc(i.category||'—')}</span></td><td class="num gold">${fmtDKK(totV(i))}</td><td class="num" style="min-width:100px"><div style="display:flex;align-items:center;gap:.4rem;justify-content:flex-end"><div style="width:60px;height:6px;background:var(--surface2);border-radius:3px;overflow:hidden"><div style="width:${barW}%;height:100%;background:var(--primary);border-radius:3px"></div></div><span>${pct.toFixed(1)}%</span></div></td></tr>`;}).join('')}</tbody>
       </table>
     </div>
     <div class="module-resize" onmousedown="startResize(event,'concentration')" title="Træk for at ændre størrelse"><svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M9 1L1 9M9 5L5 9M9 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
@@ -3690,8 +3691,8 @@ function renderDashboard(){
             return rawP?fmtDKK(rawP*m):'<span class="psa-na">—</span>';
           };
           return '<tr>'
-            +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="'+esc(i.productName)+'">'+esc(i.productName.substring(0,26))+'</td>'
-            +'<td class="muted" style="font-size:.72rem">'+esc(i.set.substring(0,18))+'</td>'
+            +'<td style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600" title="'+esc(i.productName)+'">'+esc((i.productName||'').substring(0,26))+'</td>'
+            +'<td class="muted" style="font-size:.72rem">'+esc((i.set||'').substring(0,18))+'</td>'
             +'<td style="font-size:.72rem"><span class="pill" style="background:var(--surface2);color:var(--text);padding:.15rem .4rem;border-radius:.3rem;font-weight:600">'+esc(i.condition||'?')+'</span></td>'
             +'<td class="num gold">'+fmtDKK(rawP)+'</td>'
             +'<td class="num" style="color:var(--blue)">'+fmt(mults?.psa8,8)+'</td>'
@@ -5297,11 +5298,12 @@ initEbayApiKey();
 
 // ── Hjælpefunktion: skjul loader og vis UI — ALTID kaldt til sidst ──
 function _showUI(){
-  const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
-  applyLang();
-  switchTab('overview');
+  // Skjul loader FØRST — uanset hvad der sker bagefter
   const _loader = document.getElementById('appLoader');
   if(_loader) _loader.style.display = 'none';
+  const _ls=document.getElementById('langSel'); if(_ls) _ls.value=currentLang;
+  try { applyLang(); } catch(e){ console.warn('applyLang fejl:', e); }
+  try { switchTab('overview'); } catch(e){ console.warn('switchTab fejl:', e); }
 }
 
 // ── Gendan eksisterende Supabase session ved side-genindlæsning ──
