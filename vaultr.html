@@ -3560,7 +3560,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: KPIs -->
-  <div class="dash-module" data-module-id="kpis" data-span="2" draggable="false">
+  <div class="dash-module" data-module-id="kpis" data-span="2">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-toggle" onclick="toggleModule(\'kpis\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="kpi-grid">
@@ -3585,7 +3585,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Kategori & Fordeling -->
-  <div class="dash-module" data-module-id="cat-charts" draggable="false">
+  <div class="dash-module" data-module-id="cat-charts">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-toggle" onclick="toggleModule(\'cat-charts\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
@@ -3605,7 +3605,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Kapitalforbrug -->
-  <div class="dash-module" data-module-id="monthly" draggable="false">
+  <div class="dash-module" data-module-id="monthly">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule(\'monthly\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="chart-card">
@@ -3634,7 +3634,7 @@ function renderDashboard(){
 
   ${analysedCount>0?`
   <!-- MODULE: AI Indsigter -->
-  <div class="dash-module" data-module-id="ai-insights" draggable="false">
+  <div class="dash-module" data-module-id="ai-insights">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-toggle" onclick="toggleModule(\'ai-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
@@ -3669,7 +3669,7 @@ function renderDashboard(){
   `:''}
 
   <!-- MODULE: Top Performers -->
-  <div class="dash-module" data-module-id="top-performers" draggable="false">
+  <div class="dash-module" data-module-id="top-performers">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-toggle" onclick="toggleModule(\'top-performers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="dash-two">
@@ -3700,7 +3700,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Koncentrationsrisiko -->
-  <div class="dash-module" data-module-id="concentration" data-span="2" draggable="false">
+  <div class="dash-module" data-module-id="concentration" data-span="2">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-toggle" onclick="toggleModule(\'concentration\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <table class="dash-table">
@@ -3720,7 +3720,7 @@ function renderDashboard(){
 
   ${gradeCandidates.length>0?`
   <!-- MODULE: Grading Kandidater -->
-  <div class="dash-module" data-module-id="grading-cands" data-span="2" draggable="false">
+  <div class="dash-module" data-module-id="grading-cands" data-span="2">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-toggle" onclick="toggleModule(\'grading-cands\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">Estimerede PSA-værdier baseret på råpris × historiske præmier for kortets stand. <strong>Ikke finansiel rådgivning</strong> — brug som vejledning.</p>
@@ -3771,7 +3771,7 @@ function renderDashboard(){
   `:''}
 
   <!-- MODULE: Automatiske indsigter -->
-  <div class="dash-module" data-module-id="auto-insights" draggable="false">
+  <div class="dash-module" data-module-id="auto-insights">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-toggle" onclick="toggleModule(\'auto-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="insight-list">${insights.map(i=>`<div class="insight-item ${i.cls}"><span class="insight-ico">${i.ico}</span><span>${i.txt}</span></div>`).join('')
@@ -3789,7 +3789,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: LIVE MARKEDSPRISER -->
-  <div class="dash-module" data-module-id="live-prices" draggable="false">
+  <div class="dash-module" data-module-id="live-prices">
     <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule(\'live-prices\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
@@ -3823,7 +3823,7 @@ function renderDashboard(){
 
 
   <!-- MODULE: TCG Oversigt -->
-  <div class="dash-module" data-module-id="per-game" data-span="2" draggable="false">
+  <div class="dash-module" data-module-id="per-game" data-span="2">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 TCG Oversigt</span><button class="module-toggle" onclick="toggleModule(\'per-game\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       ${renderPerGameModule()}
@@ -3839,7 +3839,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Market Movers -->
-  <div class="dash-module" data-module-id="market-movers" draggable="false">
+  <div class="dash-module" data-module-id="market-movers">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule(\'market-movers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
@@ -3862,7 +3862,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Prishistorik -->
-  <div class="dash-module" data-module-id="price-history" draggable="false">
+  <div class="dash-module" data-module-id="price-history">
     <div class="module-header">
       <span class="module-drag-handle">⠿</span>
       <span class="module-title">📈 Prishistorik</span>
@@ -3882,7 +3882,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Event Spike Tracker -->
-  <div class="dash-module" data-module-id="spike-tracker" data-span="2" draggable="false">
+  <div class="dash-module" data-module-id="spike-tracker" data-span="2">
     <div class="module-header">
       <span class="module-drag-handle">⠿</span>
       <span class="module-title">⚡ Event Spike Tracker</span>
