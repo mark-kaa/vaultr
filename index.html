@@ -391,11 +391,17 @@ tbody tr:hover .btn-watch{opacity:.7}
 .chart-title{font-size:.75rem;font-weight:700;color:var(--text);margin-bottom:.65rem}
 .chart-wrap{position:relative;flex:1;min-height:100px;height:200px}
 .chart-wrap-sm{position:relative;flex:1;min-height:80px;height:170px}
-/* Når module-body har explicit height sat (resize), skalér charts med den */
-.module-body.resizing-active .chart-wrap,
-.module-body[style*="height"] .chart-wrap{height:100%;min-height:60px}
-.module-body.resizing-active .chart-wrap-sm,
-.module-body[style*="height"] .chart-wrap-sm{height:100%;min-height:60px}
+/* Resize: chart-wrap fylder module-body når height er sat eksplicit */
+.module-body[style*="height"] { overflow: hidden; }
+.module-body[style*="height"] .chart-wrap { height: calc(100% - 20px); min-height: 60px; }
+.module-body[style*="height"] .chart-wrap-sm { height: calc(100% - 20px); min-height: 60px; }
+.module-body[style*="height"] .chart-card { flex: 1; min-height: 60px; }
+.module-resize { opacity: 0; position: absolute; bottom: 4px; right: 4px; width: 20px; height: 20px;
+  cursor: ns-resize; display: flex; align-items: center; justify-content: center;
+  color: var(--muted); transition: opacity .15s; z-index: 2; background: var(--surface2);
+  border-radius: 4px; }
+.dash-module:hover .module-resize, .module-resize.resizing { opacity: 1; }
+.dash-module { position: relative; }
 /* Tabeller */
 .dash-table{width:100%;border-collapse:collapse;font-size:.78rem}
 .dash-table th{padding:.35rem .55rem;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);text-align:left}
@@ -2995,7 +3001,7 @@ function saveDashLayout() {
   dashLayout = [...container.querySelectorAll(':scope > .dash-module')].map(m => ({
     id: m.dataset.moduleId,
     collapsed: m.classList.contains('collapsed'),
-    height: m.querySelector('.module-body')?.style.height || ''
+    h: m.querySelector('.module-body')?.style.height || ''
   }));
   localStorage.setItem('pf_dash_layout', JSON.stringify(dashLayout));
   saveUserSettingsToSupabase();
@@ -3120,12 +3126,20 @@ function applyDashLayout() {
     const m = container.querySelector(`.dash-module[data-module-id="${id}"]`);
     if(m) container.appendChild(m);
   });
-  // Restore collapsed state
-  dashLayout.forEach(({ id, collapsed }) => {
+  // Restore collapsed state og højde
+  dashLayout.forEach(({ id, collapsed, h }) => {
     const m = container.querySelector(`.dash-module[data-module-id="${id}"]`);
     if (!m) return;
     if (collapsed) m.classList.add('collapsed');
     else m.classList.remove('collapsed');
+    // Restore resize højde
+    if (h) {
+      const body = m.querySelector('.module-body');
+      if (body) {
+        body.style.height = h;
+        body.style.maxHeight = 'none';
+      }
+    }
   });
 }
 
@@ -3141,47 +3155,59 @@ function toggleSpan(id) {
 // Resize modul både højde (vertikal) og bredde/span (horisontal) via hjørne-håndtag
 function startResize(e, id) {
   e.preventDefault();
-  const container = document.getElementById('dashModules');
+  e.stopPropagation();
   const mod = document.querySelector(`.dash-module[data-module-id="${id}"]`);
-  if(!mod || !container) return;
+  if(!mod) return;
   const body = mod.querySelector('.module-body');
   const handle = mod.querySelector('.module-resize');
   if(!body) return;
 
-  const startX = e.clientX;
+  // Sæt explicit height fra nuværende rendered height
   const startY = e.clientY;
   const startH = body.getBoundingClientRect().height;
-  const containerW = container.getBoundingClientRect().width;
-  const startSpan = mod.dataset.span || '1';
+  body.style.maxHeight = 'none'; // ophæv collapse-transition
+  body.style.height = startH + 'px';
+  body.style.overflow = 'hidden';
 
   if(handle) handle.classList.add('resizing');
-  body.classList.add('resizing-active');
+
+  function applyContentScale(h) {
+    body.style.height = h + 'px';
+    // Skalér alle chart-wrappers så de fylder kassen
+    body.querySelectorAll('.chart-wrap, .chart-wrap-sm, canvas').forEach(el => {
+      if(el.tagName === 'CANVAS') return; // Canvas styres af Chart.js
+      el.style.height = Math.max(60, h - 60) + 'px';
+    });
+    // Skalér tabeller der er i kassen
+    body.querySelectorAll('.dash-table-wrap').forEach(el => {
+      el.style.maxHeight = Math.max(80, h - 48) + 'px';
+      el.style.overflowY = 'auto';
+    });
+    // Resize alle Chart.js charts i dette modul
+    Object.entries(dashCharts).forEach(([key, ch]) => {
+      try {
+        const canvas = ch.canvas;
+        if(body.contains(canvas)) {
+          ch.resize();
+        }
+      } catch(ex){}
+    });
+  }
 
   function onMove(ev) {
-    // Vertikal: ændr højde
     const dy = ev.clientY - startY;
     const newH = Math.max(80, startH + dy);
-    body.style.height = newH + 'px';
-    body.style.overflowY = 'auto';
-
-    // Horisontal: skift til span 2 hvis trækker mere end 15% af containerbredden til højre
-    const dx = ev.clientX - startX;
-    const threshold = containerW * 0.15;
-    if(dx > threshold && mod.dataset.span !== '2') {
-      mod.dataset.span = '2';
-    } else if(dx < -threshold && mod.dataset.span !== '1') {
-      mod.dataset.span = '1';
-    }
+    applyContentScale(newH);
   }
+
   function onUp() {
     if(handle) handle.classList.remove('resizing');
-    body.classList.remove('resizing-active');
     document.removeEventListener('mousemove', onMove);
     document.removeEventListener('mouseup', onUp);
-    // Fortæl Chart.js at den skal genberegne størrelse
-    Object.values(dashCharts).forEach(ch => { try { ch.resize(); } catch(e){} });
+    // Gem den nye højde i layout
     saveDashLayout();
   }
+
   document.addEventListener('mousemove', onMove);
   document.addEventListener('mouseup', onUp);
 }
@@ -4975,6 +5001,20 @@ document.addEventListener('visibilitychange', () => {
     }, 100);
   }
 });
+
+// Touch resize support for module-resize handles
+document.addEventListener('touchstart', e => {
+  const handle = e.target.closest('.module-resize');
+  if (!handle) return;
+  const modId = handle.closest('.dash-module')?.dataset?.moduleId;
+  if (!modId) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  // Simuler mousedown event for startResize
+  const me = { clientX: touch.clientX, clientY: touch.clientY,
+    preventDefault: ()=>{}, stopPropagation: ()=>{} };
+  startResize(me, modId);
+}, { passive: false });
 
 // ═══════════════════════════════════════════════════════
 // I18N — 10 languages
