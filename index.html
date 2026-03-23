@@ -487,8 +487,10 @@ tbody tr:hover .btn-watch{opacity:.7}
 }
 .module-toggle:hover,.module-toggle:active{background:var(--primary);color:#000;border-color:var(--primary)}
 /* Body */
-.module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0}
+.module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0;transition:padding .2s}
+.module-body.collapsed{padding:0}
 .module-body.collapsed{display:none}
+.module-body:empty,.dash-module.empty-module{display:none}
 .module-body.collapsed ~ .module-header .module-toggle svg,
 .dash-module.collapsed .module-toggle svg { transform: rotate(180deg); }
 .module-toggle svg { transition: transform .2s ease; }
@@ -3116,6 +3118,22 @@ function initDragDrop() {
 
   container.querySelectorAll('.dash-module').forEach(module => {
     initTouchDrag(module);
+
+    // Mus drag: kun aktiver drag når man trækker i ⠿ handle-ikonet
+    const handle = module.querySelector('.module-drag-handle');
+    if(handle){
+      handle.style.cursor = 'grab';
+      handle.addEventListener('mousedown', () => {
+        module.setAttribute('draggable', 'true');
+      });
+      document.addEventListener('mouseup', () => {
+        module.setAttribute('draggable', 'false');
+      }, { once: false });
+    } else {
+      // Fallback: altid draggable
+      module.setAttribute('draggable', 'true');
+    }
+
     // Drag startes fra module-header (grab handle)
     module.addEventListener('dragstart', e => {
       dragSrc = module;
@@ -3548,7 +3566,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: KPIs -->
-  <div class="dash-module" data-module-id="kpis" data-span="2" draggable="true">
+  <div class="dash-module" data-module-id="kpis" data-span="2" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Porteføljeoverblik</span><button class="module-toggle" onclick="toggleModule(\'kpis\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="kpi-grid">
@@ -3566,7 +3584,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Kategori & Fordeling -->
-  <div class="dash-module" data-module-id="cat-charts" draggable="true">
+  <div class="dash-module" data-module-id="cat-charts" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kategori & Fordeling</span><button class="module-toggle" onclick="toggleModule(\'cat-charts\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
@@ -3579,7 +3597,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Kapitalforbrug -->
-  <div class="dash-module" data-module-id="monthly" draggable="true">
+  <div class="dash-module" data-module-id="monthly" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Kapitalforbrug over tid</span><button class="module-toggle" onclick="toggleModule(\'monthly\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="chart-card">
@@ -3601,7 +3619,7 @@ function renderDashboard(){
 
   ${analysedCount>0?`
   <!-- MODULE: AI Indsigter -->
-  <div class="dash-module" data-module-id="ai-insights" draggable="true">
+  <div class="dash-module" data-module-id="ai-insights" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">AI-indsigter</span><button class="module-toggle" onclick="toggleModule(\'ai-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="charts-row">
@@ -3629,7 +3647,7 @@ function renderDashboard(){
   `:''}
 
   <!-- MODULE: Top Performers -->
-  <div class="dash-module" data-module-id="top-performers" draggable="true">
+  <div class="dash-module" data-module-id="top-performers" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Top Performers</span><button class="module-toggle" onclick="toggleModule(\'top-performers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="dash-two">
@@ -3653,7 +3671,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Koncentrationsrisiko -->
-  <div class="dash-module" data-module-id="concentration" data-span="2" draggable="true">
+  <div class="dash-module" data-module-id="concentration" data-span="2" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Koncentrationsrisiko · Top 10 positioner</span><button class="module-toggle" onclick="toggleModule(\'concentration\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <table class="dash-table">
@@ -3666,7 +3684,7 @@ function renderDashboard(){
 
   ${gradeCandidates.length>0?`
   <!-- MODULE: Grading Kandidater -->
-  <div class="dash-module" data-module-id="grading-cands" data-span="2" draggable="true">
+  <div class="dash-module" data-module-id="grading-cands" data-span="2" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">🏅 AI-anbefalede grading-kandidater</span><button class="module-toggle" onclick="toggleModule(\'grading-cands\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <p style="font-size:.72rem;color:var(--muted);margin-bottom:.75rem">Estimerede PSA-værdier baseret på råpris × historiske præmier for kortets stand. <strong>Ikke finansiel rådgivning</strong> — brug som vejledning.</p>
@@ -3710,7 +3728,7 @@ function renderDashboard(){
   `:''}
 
   <!-- MODULE: Automatiske indsigter -->
-  <div class="dash-module" data-module-id="auto-insights" draggable="true">
+  <div class="dash-module" data-module-id="auto-insights" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">Automatiske indsigter</span><button class="module-toggle" onclick="toggleModule(\'auto-insights\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div class="insight-list">${insights.map(i=>`<div class="insight-item ${i.cls}"><span class="insight-ico">${i.ico}</span><span>${i.txt}</span></div>`).join('')
@@ -3721,7 +3739,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: LIVE MARKEDSPRISER -->
-  <div class="dash-module" data-module-id="live-prices" draggable="true">
+  <div class="dash-module" data-module-id="live-prices" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠷</span><span class="module-title">🟢 Cardmarket EU Live Priser</span><button class="module-toggle" onclick="toggleModule(\'live-prices\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem;flex-wrap:wrap;gap:.5rem">
@@ -3748,7 +3766,7 @@ function renderDashboard(){
 
 
   <!-- MODULE: TCG Oversigt -->
-  <div class="dash-module" data-module-id="per-game" data-span="2" draggable="true">
+  <div class="dash-module" data-module-id="per-game" data-span="2" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 TCG Oversigt</span><button class="module-toggle" onclick="toggleModule(\'per-game\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       ${renderPerGameModule()}
@@ -3757,7 +3775,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Market Movers -->
-  <div class="dash-module" data-module-id="market-movers" draggable="true">
+  <div class="dash-module" data-module-id="market-movers" draggable="false">
     <div class="module-header"><span class="module-drag-handle">⠿</span><span class="module-title">📊 Market Movers</span><button class="module-toggle" onclick="toggleModule(\'market-movers\')" aria-label="Minimer/udvid" title="Minimer/udvid"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="18 15 12 9 6 15"/></svg></button></div>
     <div class="module-body">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.6rem;gap:.5rem;flex-wrap:wrap">
@@ -3773,7 +3791,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Prishistorik -->
-  <div class="dash-module" data-module-id="price-history" draggable="true">
+  <div class="dash-module" data-module-id="price-history" draggable="false">
     <div class="module-header">
       <span class="module-drag-handle">⠿</span>
       <span class="module-title">📈 Prishistorik</span>
@@ -3786,7 +3804,7 @@ function renderDashboard(){
   </div>
 
   <!-- MODULE: Event Spike Tracker -->
-  <div class="dash-module" data-module-id="spike-tracker" data-span="2" draggable="true">
+  <div class="dash-module" data-module-id="spike-tracker" data-span="2" draggable="false">
     <div class="module-header">
       <span class="module-drag-handle">⠿</span>
       <span class="module-title">⚡ Event Spike Tracker</span>
@@ -5017,6 +5035,20 @@ function showToast(msg){
 // KEYBOARD
 // ═══════════════════════════════════════════════════════
 document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
+
+// Fix: grå/blank skærm ved fane-hop — re-render charts når tab bliver synlig
+document.addEventListener('visibilitychange', () => {
+  if(document.visibilityState === 'visible'){
+    // Re-render aktiv view for at genopfriske canvas-elementer
+    try {
+      if(activeTab === 'overview') {
+        setTimeout(() => { try{ renderDashboard(); } catch(e){} }, 50);
+      } else {
+        setTimeout(() => { try{ render(); } catch(e){} }, 50);
+      }
+    } catch(e){}
+  }
+});
 
 // ═══════════════════════════════════════════════════════
 // I18N — 10 languages
