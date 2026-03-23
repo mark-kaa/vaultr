@@ -396,7 +396,6 @@ tbody tr:hover .btn-watch{opacity:.7}
 .module-body[style*="height"] .chart-wrap { height: calc(100% - 20px); min-height: 60px; }
 .module-body[style*="height"] .chart-wrap-sm { height: calc(100% - 20px); min-height: 60px; }
 .module-body[style*="height"] .chart-card { flex: 1; min-height: 60px; }
-.dash-module { position: relative; }
 /* Tabeller */
 .dash-table{width:100%;border-collapse:collapse;font-size:.78rem}
 .dash-table th{padding:.35rem .55rem;font-size:.65rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);border-bottom:1px solid var(--border);text-align:left}
@@ -425,26 +424,26 @@ tbody tr:hover .btn-watch{opacity:.7}
 .score-bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
 .score-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
 .score-bar-count{width:28px;text-align:right;font-weight:700;color:var(--text);flex-shrink:0}
-/* ═══ MODULERBART DASHBOARD ═══ */
+/* ── Dashboard Grid ── */
 #dashModules {
   display: flex;
   flex-direction: column;
   gap: .65rem;
-  padding: .25rem 0 2rem;
+  padding: .25rem 0 3rem;
 }
 .dash-module {
   position: relative;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  overflow: hidden;
+  overflow: visible;
   transition: box-shadow .15s, border-color .15s;
 }
 .dash-module.is-dragging {
-  box-shadow: var(--shadow-lg);
+  opacity: .4;
+  box-shadow: 0 16px 48px rgba(0,0,0,.45);
   border-color: var(--primary);
   z-index: 50;
-  opacity: 0.92;
 }
 .dash-module.drag-over {
   border-color: var(--primary);
@@ -462,48 +461,51 @@ tbody tr:hover .btn-watch{opacity:.7}
   -webkit-user-select: none;
   touch-action: none;
   flex-shrink: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
 }
 .module-header:active { cursor: grabbing; }
-.dash-module.collapsed .module-header { border-bottom: none; }
+.dash-module.collapsed > .module-header { border-bottom: none; border-radius: var(--radius); }
 .module-drag-handle { color: var(--muted); font-size: .9rem; flex-shrink: 0; opacity: .5; }
 .module-header:hover .module-drag-handle { opacity: 1; }
 .module-title { flex: 1; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .module-toggle {
   background: none; border: none; cursor: pointer; color: var(--muted);
   padding: .15rem; display: flex; align-items: center; justify-content: center;
-  border-radius: .25rem; flex-shrink: 0;
-  transition: transform .2s;
+  border-radius: .25rem; flex-shrink: 0; transition: transform .2s;
 }
 .module-toggle:hover { color: var(--text); background: var(--border); }
-.dash-module.collapsed .module-toggle { transform: rotate(180deg); }
+.dash-module.collapsed .module-toggle svg { transform: rotate(180deg); }
 .module-body {
   padding: .85rem 1rem;
-  overflow: hidden;
-  transition: max-height .25s ease, padding .25s ease, opacity .2s;
+  transition: max-height .28s ease, padding .28s ease, opacity .2s;
   max-height: 4000px;
   opacity: 1;
+  overflow: hidden;
 }
-.dash-module.collapsed .module-body {
-  max-height: 0;
-  padding-top: 0;
-  padding-bottom: 0;
+.dash-module.collapsed > .module-body {
+  max-height: 0 !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
   opacity: 0;
   pointer-events: none;
 }
 /* Resize handles */
-.resize-handle { position: absolute; z-index: 10; }
-.resize-handle.rh-n  { top: -4px; left: 8px; right: 8px; height: 8px; cursor: n-resize; }
-.resize-handle.rh-s  { bottom: -4px; left: 8px; right: 8px; height: 8px; cursor: s-resize; }
-.resize-handle.rh-w  { left: -4px; top: 8px; bottom: 8px; width: 8px; cursor: w-resize; }
-.resize-handle.rh-e  { right: -4px; top: 8px; bottom: 8px; width: 8px; cursor: e-resize; }
-.resize-handle.rh-nw { top: -4px; left: -4px; width: 14px; height: 14px; cursor: nw-resize; }
-.resize-handle.rh-ne { top: -4px; right: -4px; width: 14px; height: 14px; cursor: ne-resize; }
-.resize-handle.rh-sw { bottom: -4px; left: -4px; width: 14px; height: 14px; cursor: sw-resize; }
-.resize-handle.rh-se { bottom: -4px; right: -4px; width: 14px; height: 14px; cursor: se-resize; }
+.resize-handle {
+  position: absolute;
+  z-index: 20;
+}
+.resize-handle.rh-n  { top: -5px; left: 10px; right: 10px; height: 10px; cursor: n-resize; }
+.resize-handle.rh-s  { bottom: -5px; left: 10px; right: 10px; height: 10px; cursor: s-resize; }
+.resize-handle.rh-w  { left: -5px; top: 10px; bottom: 10px; width: 10px; cursor: w-resize; }
+.resize-handle.rh-e  { right: -5px; top: 10px; bottom: 10px; width: 10px; cursor: e-resize; }
+.resize-handle.rh-nw { top: -5px; left: -5px; width: 14px; height: 14px; cursor: nw-resize; }
+.resize-handle.rh-ne { top: -5px; right: -5px; width: 14px; height: 14px; cursor: ne-resize; }
+.resize-handle.rh-sw { bottom: -5px; left: -5px; width: 14px; height: 14px; cursor: sw-resize; }
+.resize-handle.rh-se { bottom: -5px; right: -5px; width: 14px; height: 14px; cursor: se-resize; }
 .resize-handle.rh-se::after {
   content: '';
   position: absolute;
-  bottom: 5px; right: 5px;
+  bottom: 4px; right: 4px;
   width: 8px; height: 8px;
   border-right: 2px solid var(--muted);
   border-bottom: 2px solid var(--muted);
@@ -3043,8 +3045,8 @@ function expandAllModules() {
   saveDashLayout();
 }
 
-// ─── DRAG (pointer-based, DOM reorder) ───
-function setupModuleDrag(headerEl, modEl, container) {
+// ─── DRAG (DOM reorder med swap ved slip) ───
+function setupDrag(headerEl, modEl, container) {
   let isDragging = false;
   let dragOver = null;
   let startX, startY;
@@ -3114,7 +3116,7 @@ function setupModuleDrag(headerEl, modEl, container) {
 }
 
 // ─── RESIZE (vertikal — sæt height på module-body) ───
-function setupModuleResize(handleEl, modEl, dir) {
+function setupResize(handleEl, modEl, dir) {
   function onStart(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -3174,12 +3176,22 @@ function initDragDrop() {
   if (!container) return;
   container.querySelectorAll(':scope > .dash-module').forEach(mod => {
     const header = mod.querySelector('.module-header');
-    if (header) setupModuleDrag(header, mod, container);
+    if (header) setupDrag(header, mod, container);
     mod.querySelectorAll('.resize-handle').forEach(handle => {
       const dir = handle.dataset.dir || 'se';
-      setupModuleResize(handle, mod, dir);
+      setupResize(handle, mod, dir);
     });
   });
+}
+
+// setupModuleDrag beholdes til bagudkompatibilitet (alias til setupDrag)
+function setupModuleDrag(headerEl, modEl, container) {
+  return setupDrag(headerEl, modEl, container);
+}
+
+// setupModuleResize beholdes til bagudkompatibilitet (alias til setupResize)
+function setupModuleResize(handleEl, modEl, dir) {
+  return setupResize(handleEl, modEl, dir);
 }
 
 // toggleSpan beholdes til bagudkompatibilitet
