@@ -424,96 +424,70 @@ tbody tr:hover .btn-watch{opacity:.7}
 .score-bar-track{flex:1;height:8px;background:var(--surface2);border-radius:4px;overflow:hidden}
 .score-bar-fill{height:100%;border-radius:4px;transition:width .5s ease}
 .score-bar-count{width:28px;text-align:right;font-weight:700;color:var(--text);flex-shrink:0}
-/* ═══ MODULERBART GRID DASHBOARD ═══ */
-/* 2D CSS Grid — moduler kan spanne 1 eller 2 kolonner */
-#dashModules{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:.75rem;
-  align-items:start;
-  width:100%;
-  min-width:0;
-  overflow:hidden;
+/* ═══ MODULERBART DASHBOARD ═══ */
+#dashModules {
+  display: flex;
+  flex-direction: column;
+  gap: .65rem;
+  padding: .25rem 0 2rem;
 }
-/* Moduler der spanner fuld bredde */
-.dash-module[data-span="2"]{ grid-column:span 2 }
-/* Alle andre: 1 kolonne */
-.dash-module{ grid-column:span 1 }
-/* Specifikke moduler der skal være fuld bredde som standard */
-.dash-module[data-module-id="kpis"],
-.dash-module[data-module-id="grading-cands"],
-.dash-module[data-module-id="concentration"]{ grid-column:span 2 }
-
-.dash-module{
-  background:var(--surface);
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  overflow:visible;
-  transition:box-shadow var(--trans),opacity .2s;
-  position:relative;
-  min-height:80px;
-  min-width:0;
-  max-width:100%;
+.dash-module {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  transition: box-shadow .15s, border-color .15s;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.dash-module.dragging{opacity:.35;box-shadow:var(--shadow-lg);transform:rotate(.5deg)}
-.dash-module.drag-over{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 30%,transparent)}
-/* Header */
-.module-header{
-  display:flex;align-items:center;gap:.5rem;
-  padding:.55rem .85rem;
-  background:var(--surface2);
-  border-bottom:1px solid var(--border);
-  cursor:grab;user-select:none;
-  border-radius:var(--radius) var(--radius) 0 0;
-  transition:background var(--trans);
+.dash-module.dragging {
+  opacity: .4;
+  box-shadow: var(--shadow-lg);
 }
-.module-header:hover{background:color-mix(in srgb,var(--primary) 8%,var(--surface2))}
-.module-header:active{cursor:grabbing;background:color-mix(in srgb,var(--primary) 14%,var(--surface2))}
-.module-drag-handle{color:var(--muted);font-size:.9rem;flex-shrink:0;opacity:.5;letter-spacing:-.5px}
-.module-header:hover .module-drag-handle{opacity:1}
-.module-title{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);flex:1}
-.module-toggle{
-  width:2rem;height:2rem;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:.35rem;
-  color:var(--muted);
-  transition:all var(--trans);
-  flex-shrink:0;
-  font-size:1rem;
-  background:var(--surface);
-  border:1px solid var(--border);
-  cursor:pointer;
-  -webkit-tap-highlight-color:rgba(0,0,0,0);
+.dash-module.drag-over {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px color-mix(in srgb,var(--primary) 30%,transparent);
 }
-.module-toggle:hover,.module-toggle:active{background:var(--primary);color:#000;border-color:var(--primary)}
-/* Body */
-.module-body{padding:.85rem 1rem;overflow-x:hidden;min-width:0;transition:padding .2s}
-.module-body.collapsed{padding:0}
-.module-body.collapsed{display:none}
-.module-body:empty,.dash-module.empty-module{display:none}
-.module-body.collapsed ~ .module-header .module-toggle svg,
-.dash-module.collapsed .module-toggle svg { transform: rotate(180deg); }
-.module-toggle svg { transition: transform .2s ease; }
-/* Resize håndtag — hjørne (nw-resize = diagonal begge retninger) */
-.module-resize{
-  position:absolute;bottom:0;right:0;
-  width:18px;height:18px;
-  cursor:nwse-resize;
-  border-radius:0 0 var(--radius) 0;
-  z-index:10;
-  display:flex;align-items:flex-end;justify-content:flex-end;
-  padding:2px 3px;
-  opacity:0;
-  transition:opacity .15s;
+.module-header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+  padding: .55rem .85rem;
+  cursor: grab;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--border);
+  touch-action: none;
 }
-.dash-module:hover .module-resize,.module-resize.resizing{opacity:1}
-.module-resize svg{pointer-events:none;color:var(--primary);opacity:.8}
-/* Resizable body overflow */
-.module-body.resizing-active{overflow:hidden}
-/* Mobile: én kolonne */
+.module-header:active { cursor: grabbing; }
+.dash-module.collapsed .module-header { border-bottom: none; }
+.module-drag-handle { color: var(--muted); font-size: .9rem; flex-shrink: 0; opacity: .5; }
+.module-header:hover .module-drag-handle { opacity: 1; }
+.module-title { flex: 1; font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.module-toggle {
+  background: none; border: none; cursor: pointer; color: var(--muted);
+  padding: .15rem; display: flex; align-items: center; justify-content: center;
+  border-radius: .25rem; flex-shrink: 0;
+  transition: transform .2s;
+}
+.module-toggle:hover { color: var(--text); background: var(--border); }
+.dash-module.collapsed .module-toggle { transform: rotate(180deg); }
+.module-body {
+  padding: .85rem 1rem;
+  overflow: hidden;
+  transition: max-height .25s ease, padding .25s ease, opacity .2s;
+  max-height: 2000px;
+  opacity: 1;
+}
+.dash-module.collapsed .module-body {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+/* Mobile: full width */
 @media(max-width:800px){
-  #dashModules{grid-template-columns:1fr}
-  .dash-module[data-span="2"],.dash-module[data-module-id="kpis"],.dash-module[data-module-id="grading-cands"],.dash-module[data-module-id="concentration"]{grid-column:span 1}
+  #dashModules { gap: .45rem; }
 }
 
 /* ── PSA potentiale badges ── */
@@ -3016,188 +2990,142 @@ function renderPSAPotential(item) {
 let dashLayout = JSON.parse(localStorage.getItem('pf_dash_layout') || 'null');
 
 function saveDashLayout() {
-  const modules = document.querySelectorAll('#dashModules .dash-module');
-  const layout = [];
-  modules.forEach(m => {
-    const body = m.querySelector('.module-body');
-    layout.push({
-      id: m.dataset.moduleId,
-      collapsed: body ? body.classList.contains('collapsed') : false,
-      span: m.dataset.span || '1',
-      height: body && body.style.height ? body.style.height : null
-    });
-  });
-  dashLayout = layout;
-  localStorage.setItem('pf_dash_layout', JSON.stringify(layout));
-  // Cloud sync af dashboard layout
+  const container = document.getElementById('dashModules');
+  if (!container) return;
+  dashLayout = [...container.querySelectorAll(':scope > .dash-module')].map(m => ({
+    id: m.dataset.moduleId,
+    collapsed: m.classList.contains('collapsed'),
+    height: m.querySelector('.module-body')?.style.height || ''
+  }));
+  localStorage.setItem('pf_dash_layout', JSON.stringify(dashLayout));
   saveUserSettingsToSupabase();
 }
 
 function toggleModule(id) {
-  const body = document.querySelector(`.dash-module[data-module-id="${id}"] .module-body`);
-  const icon = document.querySelector(`.dash-module[data-module-id="${id}"] .module-toggle`);
-  if(!body) return;
-  body.classList.toggle('collapsed');
-  icon.textContent = body.classList.contains('collapsed') ? '＋' : '－';
+  const m = document.querySelector(`.dash-module[data-module-id="${id}"]`);
+  if (!m) return;
+  m.classList.toggle('collapsed');
   saveDashLayout();
 }
 function collapseAllModules() {
-  document.querySelectorAll('#dashModules .dash-module').forEach(mod => {
-    const body = mod.querySelector('.module-body');
-    const icon = mod.querySelector('.module-toggle');
-    if(body && !body.classList.contains('collapsed')) {
-      body.classList.add('collapsed');
-      if(icon) icon.textContent = '＋';
-    }
-  });
+  document.querySelectorAll('.dash-module').forEach(m => m.classList.add('collapsed'));
   saveDashLayout();
 }
 function expandAllModules() {
-  document.querySelectorAll('#dashModules .dash-module').forEach(mod => {
-    const body = mod.querySelector('.module-body');
-    const icon = mod.querySelector('.module-toggle');
-    if(body && body.classList.contains('collapsed')) {
-      body.classList.remove('collapsed');
-      if(icon) icon.textContent = '－';
-    }
-  });
+  document.querySelectorAll('.dash-module').forEach(m => m.classList.remove('collapsed'));
   saveDashLayout();
 }
 
 function initDragDrop() {
-  // Brug #dashModules som direkte parent for drag-drop
-  const container = document.getElementById('dashModules') || document.getElementById('dashboardPanel');
+  const container = document.getElementById('dashModules');
+  if (!container) return;
+
   let dragSrc = null;
+  let dragOver = null;
 
-  // Touch drag support (Safari/iPad)
-  let touchDragSrc = null, touchPlaceholder = null;
-  function initTouchDrag(module){
-    const header = module.querySelector('.module-header');
-    if(!header) return;
-    let startY, startX, origY, lastOver;
-    header.addEventListener('touchstart', e => {
-      if(e.touches.length !== 1) return;
-      touchDragSrc = module;
-      const t = e.touches[0];
-      startX = t.clientX; startY = t.clientY;
-      const rect = module.getBoundingClientRect();
-      origY = rect.top;
-      module.style.opacity = '0.4';
-      module.style.transition = 'none';
-    }, {passive: true});
-    header.addEventListener('touchmove', e => {
-      if(!touchDragSrc || touchDragSrc !== module) return;
+  container.querySelectorAll('.dash-module').forEach(mod => {
+    const header = mod.querySelector('.module-header');
+    if (!header) return;
+
+    // ── MOUSE drag ──
+    header.addEventListener('mousedown', e => {
+      if (e.target.closest('.module-toggle')) return; // ikke drag ved toggle-klik
       e.preventDefault();
-      const t = e.touches[0];
-      const over = document.elementFromPoint(t.clientX, t.clientY);
-      const overModule = over?.closest('.dash-module');
-      if(overModule && overModule !== module){
-        if(lastOver && lastOver !== overModule) lastOver.classList.remove('drag-over');
-        overModule.classList.add('drag-over');
-        lastOver = overModule;
-      }
-    }, {passive: false});
-    header.addEventListener('touchend', e => {
-      if(!touchDragSrc || touchDragSrc !== module) return;
-      module.style.opacity = '';
-      module.style.transition = '';
-      if(lastOver){ lastOver.classList.remove('drag-over'); }
-      const t = e.changedTouches[0];
-      const over = document.elementFromPoint(t.clientX, t.clientY);
-      const target = over?.closest('.dash-module');
-      if(target && target !== module){
-        const allMods = [...container.querySelectorAll(':scope > .dash-module')];
-        const si = allMods.indexOf(module), ti = allMods.indexOf(target);
-        if(si < ti) container.insertBefore(module, target.nextSibling);
-        else container.insertBefore(module, target);
-        saveDashLayout();
-      }
-      touchDragSrc = null; lastOver = null;
-    });
-  }
+      dragSrc = mod;
+      mod.classList.add('dragging');
 
-  container.querySelectorAll('.dash-module').forEach(module => {
-    initTouchDrag(module);
+      const onMove = e2 => {
+        const el = document.elementFromPoint(e2.clientX, e2.clientY);
+        const target = el?.closest('.dash-module');
+        if (target && target !== dragSrc) {
+          if (dragOver && dragOver !== target) dragOver.classList.remove('drag-over');
+          target.classList.add('drag-over');
+          dragOver = target;
+        }
+      };
 
-    // Mus drag: kun aktiver drag når man trækker i ⠿ handle-ikonet
-    const handle = module.querySelector('.module-drag-handle');
-    if(handle){
-      handle.style.cursor = 'grab';
-      handle.addEventListener('mousedown', () => {
-        module.setAttribute('draggable', 'true');
-      });
-      document.addEventListener('mouseup', () => {
-        module.setAttribute('draggable', 'false');
-      }, { once: false });
-    } else {
-      // Fallback: altid draggable
-      module.setAttribute('draggable', 'true');
-    }
-
-    // Drag startes fra module-header (grab handle)
-    module.addEventListener('dragstart', e => {
-      dragSrc = module;
-      module.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', module.dataset.moduleId || '');
-    });
-    module.addEventListener('dragend', () => {
-      module.classList.remove('dragging');
-      container.querySelectorAll('.dash-module').forEach(m => m.classList.remove('drag-over'));
-      saveDashLayout();
-    });
-    module.addEventListener('dragover', e => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if(module !== dragSrc) {
-        container.querySelectorAll('.dash-module').forEach(m => m.classList.remove('drag-over'));
-        module.classList.add('drag-over');
-      }
-    });
-    module.addEventListener('dragleave', () => {
-      module.classList.remove('drag-over');
-    });
-    module.addEventListener('drop', e => {
-      e.preventDefault();
-      e.stopPropagation();
-      if(dragSrc && dragSrc !== module) {
-        const allModules = [...container.querySelectorAll(':scope > .dash-module')];
-        const srcIdx = allModules.indexOf(dragSrc);
-        const tgtIdx = allModules.indexOf(module);
-        if(srcIdx < tgtIdx) container.insertBefore(dragSrc, module.nextSibling);
-        else container.insertBefore(dragSrc, module);
-        module.classList.remove('drag-over');
+      const onUp = e2 => {
+        document.removeEventListener('mousemove', onMove);
+        document.removeEventListener('mouseup', onUp);
+        mod.classList.remove('dragging');
+        if (dragOver) {
+          dragOver.classList.remove('drag-over');
+          const all = [...container.querySelectorAll(':scope > .dash-module')];
+          const si = all.indexOf(dragSrc), ti = all.indexOf(dragOver);
+          if (si !== -1 && ti !== -1) {
+            if (si < ti) container.insertBefore(dragSrc, dragOver.nextSibling);
+            else container.insertBefore(dragSrc, dragOver);
+            saveDashLayout();
+          }
+        }
         dragSrc = null;
-        saveDashLayout();
+        dragOver = null;
+      };
+
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', onUp);
+    });
+
+    // ── TOUCH drag ──
+    let touchDragActive = false, lastTouchOver = null;
+    header.addEventListener('touchstart', e => {
+      if (e.target.closest('.module-toggle')) return;
+      if (e.touches.length !== 1) return;
+      dragSrc = mod;
+      touchDragActive = true;
+      mod.classList.add('dragging');
+    }, { passive: true });
+
+    header.addEventListener('touchmove', e => {
+      if (!touchDragActive || dragSrc !== mod) return;
+      e.preventDefault();
+      const t = e.touches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el?.closest('.dash-module');
+      if (target && target !== dragSrc) {
+        if (lastTouchOver && lastTouchOver !== target) lastTouchOver.classList.remove('drag-over');
+        target.classList.add('drag-over');
+        lastTouchOver = target;
       }
+    }, { passive: false });
+
+    header.addEventListener('touchend', e => {
+      if (!touchDragActive || dragSrc !== mod) return;
+      mod.classList.remove('dragging');
+      touchDragActive = false;
+      const t = e.changedTouches[0];
+      const el = document.elementFromPoint(t.clientX, t.clientY);
+      const target = el?.closest('.dash-module');
+      if (lastTouchOver) lastTouchOver.classList.remove('drag-over');
+      if (target && target !== dragSrc) {
+        const all = [...container.querySelectorAll(':scope > .dash-module')];
+        const si = all.indexOf(dragSrc), ti = all.indexOf(target);
+        if (si !== -1 && ti !== -1) {
+          if (si < ti) container.insertBefore(dragSrc, target.nextSibling);
+          else container.insertBefore(dragSrc, target);
+          saveDashLayout();
+        }
+      }
+      dragSrc = null;
+      lastTouchOver = null;
     });
   });
 }
-
 function applyDashLayout() {
   if(!dashLayout) return;
-  const container = document.getElementById('dashModules') || document.getElementById('dashboardPanel');
+  const container = document.getElementById('dashModules');
   if(!container) return;
   // Reorder
   dashLayout.forEach(({ id }) => {
     const m = container.querySelector(`.dash-module[data-module-id="${id}"]`);
     if(m) container.appendChild(m);
   });
-  // Apply collapsed, span, height
-  dashLayout.forEach(({ id, collapsed, span, height }) => {
-    const mod = container.querySelector(`.dash-module[data-module-id="${id}"]`);
-    if(!mod) return;
-    const body = mod.querySelector('.module-body');
-    const icon = mod.querySelector('.module-toggle');
-    const spanBtn = mod.querySelector('.module-span-btn');
-    // Collapsed
-    if(collapsed && body) { body.classList.add('collapsed'); if(icon) icon.textContent = '＋'; }
-    // Span
-    if(span && span !== '1') {
-      mod.dataset.span = span;
-    }
-    // Height
-    if(height && body) { body.style.height = height; body.style.overflow = 'hidden'; }
+  // Restore collapsed state
+  dashLayout.forEach(({ id, collapsed }) => {
+    const m = container.querySelector(`.dash-module[data-module-id="${id}"]`);
+    if (!m) return;
+    if (collapsed) m.classList.add('collapsed');
+    else m.classList.remove('collapsed');
   });
 }
 
@@ -5038,15 +4966,13 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape') closeModal(); });
 
 // Fix: grå/blank skærm ved fane-hop — re-render charts når tab bliver synlig
 document.addEventListener('visibilitychange', () => {
-  if(document.visibilityState === 'visible'){
-    // Re-render aktiv view for at genopfriske canvas-elementer
-    try {
-      if(activeTab === 'overview') {
-        setTimeout(() => { try{ renderDashboard(); } catch(e){} }, 50);
-      } else {
-        setTimeout(() => { try{ render(); } catch(e){} }, 50);
-      }
-    } catch(e){}
+  if (document.visibilityState === 'visible') {
+    setTimeout(() => {
+      try {
+        if (activeTab === 'overview') renderDashboard();
+        else render();
+      } catch(e) {}
+    }, 100);
   }
 });
 
